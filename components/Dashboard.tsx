@@ -1,5 +1,5 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   BarChart,
   Bar,
@@ -7,7 +7,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer
+  ResponsiveContainer // Fixed import
 } from 'recharts';
 import { Project, Client, Notification } from '../types';
 import {
@@ -27,36 +27,84 @@ interface DashboardProps {
   onAddProject: () => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ projects, clients }) => {
-  const metrics = useMemo(() => {
-    let totalRevenue = 0;
-    let totalDevCosts = 0;
-    let totalOtherCosts = 0;
-    let activeContributors = new Set();
-    let totalPotential = 0;
+const Dashboard: React.FC<DashboardProps> = ({ projects, clients, notifications, onAddProject }) => {
+  const [metrics, setMetrics] = useState({
+    totalPotential: 0,
+    totalRevenue: 0,
+    totalExpenses: 0,
+    netProfit: 0,
+    profitMargin: 0,
+    contributorsCount: 0,
+    currency: 'AUD'
+  });
 
+  const [loading, setLoading] = useState(true);
+
+  // Fetch metrics from backend
+  const fetchDashboard = async () => {
+    try {
+      const res = await fetch('/api/dashboard.php');
+      const data = await res.json();
+      setMetrics({
+        totalPotential: data.totalPotential || 0,
+        totalRevenue: data.totalRevenue || 0,
+        totalExpenses: data.totalExpenses || 0,
+        netProfit: data.netProfit || 0,
+        profitMargin: data.profitMargin || 0,
+        contributorsCount: data.activeContributors || 0,
+        currency: data.currency || 'USD'
+      });
+    } catch (error) {
+      console.error("Failed to fetch dashboard metrics:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboard();
+    const handleCurrencyChange = () => fetchDashboard();
+    window.addEventListener('stratis-currency-change', handleCurrencyChange);
+    return () => window.removeEventListener('stratis-currency-change', handleCurrencyChange);
+  }, []);
+
+  // Transactions Logic
+  const transactions = useMemo(() => {
+    const list: any[] = [];
     projects.forEach(p => {
-      totalPotential += calculateGrandTotal(p);
-      totalRevenue += calculatePaidAmount(p);
-      totalDevCosts += calculateDeveloperTotalPayout(p.squad || []);
-      totalOtherCosts += calculateTotalAdditionalCosts(p.additionalCosts || []);
-      p.squad?.forEach(s => activeContributors.add(s.developerId));
+      // Income from paid payments
+      p.payments?.forEach((m) => {
+        if (m.status === 'Paid') {
+          list.push({
+            id: `TRX-IN-${m.id}`,
+            projectName: p.name,
+            type: 'INCOME',
+            category: `Payment ${m.payment_number}`,
+            amount: m.amount,
+            date: m.paid_date || p.start_date,
+          });
+        }
+      });
+      // Expenses (Mocked as 60% of dev cost at start, 40% at end? or just flat)
+      // Since we don't track dev payments status, let's just show Project Start expense
+      if (p.developers && p.developers.length > 0) {
+        const totalDevCost = calculateDeveloperTotalPayout(p.developers);
+        // Assume 40% advance paid on start
+        list.push({
+          id: `TRX-OUT-${p.id}-Start`,
+          projectName: p.name,
+          type: 'EXPENSE',
+          category: 'Dev Advance',
+          amount: totalDevCost * 0.4,
+          date: p.start_date
+        });
+      }
     });
 
-    const netProfit = totalRevenue - (totalDevCosts + totalOtherCosts * 0.2);
-    const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
-
-    return {
-      totalPotential,
-      totalRevenue,
-      totalDevCosts,
-      totalOtherCosts,
-      netProfit,
-      profitMargin,
-      contributorsCount: activeContributors.size
-    };
+    return list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5);
   }, [projects]);
 
+  // Mock Chart Data
   const chartData = [
     { name: 'MAY', revenue: 32000, expenses: 14000 },
     { name: 'JUN', revenue: 28000, expenses: 16000 },
@@ -66,58 +114,25 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, clients }) => {
     { name: 'OCT', revenue: 45000, expenses: 15000 },
   ];
 
-  const transactions = useMemo(() => {
-    const list: any[] = [];
-    projects.forEach(p => {
-      p.milestones.forEach((m) => {
-        if (m.isPaid) {
-          list.push({
-            id: `TRX-${Math.floor(Math.random() * 90000) + 10000}`,
-            projectName: p.name,
-            type: 'INCOME',
-            category: m.label,
-            amount: m.amount,
-            date: p.startDate,
-          });
-        }
-      });
-      p.squad?.forEach(s => {
-        if (s.isAdvancePaid) {
-          list.push({
-            id: `TRX-${Math.floor(Math.random() * 90000) + 10000}`,
-            projectName: p.name,
-            type: 'EXPENSE',
-            category: 'Dev Advance',
-            amount: s.totalCost * 0.4,
-            date: p.startDate,
-          });
-        }
-      });
-    });
-
-    return list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5);
-  }, [projects]);
-
   const handleMasterExport = () => {
     const exportData = projects.map(p => {
-      const client = clients.find(c => c.id === p.clientId);
-      const totalDevCost = calculateDeveloperTotalPayout(p.squad);
-      const otherCosts = calculateTotalAdditionalCosts(p.additionalCosts);
+      const client = clients.find(c => c.id === p.client_id);
+      const totalDevCost = calculateDeveloperTotalPayout(p.developers || []);
+      const otherCosts = calculateTotalAdditionalCosts(p.additional_costs || []);
       const profit = calculateGrandTotal(p) - (totalDevCost + otherCosts);
 
       return {
         'Project ID': p.id,
         'Project Name': p.name,
-        'Client': client?.companyName || 'Private Partner',
+        'Client': client?.company_name || 'Private Partner',
         'Status': p.status,
-        'Priority': p.priority,
         'Total Contract Value': calculateGrandTotal(p),
         'Amount Paid by Client': calculatePaidAmount(p),
         'Total Developer Costs': totalDevCost,
         'Additional Costs': otherCosts,
         'Net Project Profit': profit,
-        'Start Date': p.startDate,
-        'End Date': p.endDate,
+        'Start Date': p.start_date,
+        'End Date': p.end_date,
         'Currency': p.currency
       };
     });
@@ -136,31 +151,54 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, clients }) => {
           onClick={handleMasterExport}
           className="flex items-center justify-center h-[60px] px-10 bg-[#2563EB] text-white rounded-[20px] text-[13px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 active:scale-95 transition-all"
         >
-          <svg className="w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
-          Master Export
+          <ICONS.Download />
+          <span className="ml-3">Master Export</span>
         </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
         <KPICard
           label="Total Revenue"
-          value={formatCurrency(metrics.totalRevenue)}
-          growth={`Total Pot: ${formatCurrency(metrics.totalPotential)}`}
+          value={formatCurrency(metrics.totalRevenue, metrics.currency)}
+          growth={`Total Pot: ${formatCurrency(metrics.totalPotential, metrics.currency)}`}
           footer={<div className="h-1.5 w-full bg-[#E2E8F0] rounded-full overflow-hidden mt-6"><div className="h-full bg-[#2563EB]" style={{ width: '72%' }} /></div>}
         />
         <KPICard
           label="Operational Expense"
-          value={formatCurrency(metrics.totalDevCosts + metrics.totalOtherCosts)}
+          value={formatCurrency(metrics.totalExpenses, metrics.currency)}
           subValue={`${metrics.contributorsCount} engineers assigned`}
           icon={<ICONS.Teams />}
         />
         <KPICard
           label="Net Profit"
-          value={formatCurrency(metrics.netProfit)}
+          value={formatCurrency(metrics.netProfit, metrics.currency)}
           valueColor="text-[#2563EB]"
           growth={`↗ ${metrics.profitMargin.toFixed(1)}% Margin`}
           growthColor="text-[#10B981]"
         />
+      </div>
+
+      {/* Notifications Section */}
+      <div className="bg-white p-6 sm:p-10 rounded-[24px] sm:rounded-[40px] border border-[#F1F5F9] shadow-sm overflow-hidden">
+        <h3 className="text-lg font-black text-[#0F172A] uppercase tracking-widest mb-6">Important Notifications</h3>
+        <div className="space-y-4">
+          {notifications.length > 0 ? (
+            notifications.slice(0, 5).map(note => (
+              <div key={note.id} className="p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded-r-xl flex items-start gap-4">
+                <div className="p-2 bg-yellow-100 rounded-full text-yellow-600">
+                  <ICONS.Info />
+                </div>
+                <div>
+                  <h4 className="font-bold text-[#0F172A]">{note.type}</h4>
+                  <p className="text-sm text-slate-600 mt-1">{note.message}</p>
+                  <span className="text-xs text-slate-400 mt-2 block">{new Date(note.sent_at).toLocaleDateString()}</span>
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="text-slate-400 italic">No new notifications.</p>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-10">
@@ -219,7 +257,7 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, clients }) => {
                       </span>
                     </td>
                     <td className={`px-6 sm:px-10 py-6 text-sm font-black ${trx.type === 'INCOME' ? 'text-[#0F172A]' : 'text-[#F43F5E]'}`}>
-                      {trx.type === 'EXPENSE' ? '-' : '+'}{formatCurrency(trx.amount)}
+                      {trx.type === 'EXPENSE' ? '-' : '+'}{formatCurrency(trx.amount, metrics.currency)}
                     </td>
                   </tr>
                 ))}

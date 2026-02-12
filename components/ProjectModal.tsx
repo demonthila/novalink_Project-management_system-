@@ -1,13 +1,11 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Client, Developer, Project, ProjectType, ProjectStatus, Priority } from '../types';
+import { Client, Developer, Project, ProjectStatus } from '../types';
 import { ICONS } from '../constants';
 import {
   formatCurrency,
-  getMilestonesByProjectType,
   calculateTotalAdditionalCosts,
-  calculateDeveloperTotalPayout,
-  getDevPayoutSplits
+  calculateDeveloperTotalPayout
 } from '../utils';
 
 interface ProjectModalProps {
@@ -20,78 +18,97 @@ interface ProjectModalProps {
 }
 
 const INPUT_CLASSES = "w-full h-[52px] px-5 bg-white border border-[#E2E8F0] rounded-xl text-[14px] font-bold text-[#0F172A] outline-none focus:border-[#2563EB] focus:ring-4 focus:ring-blue-500/5 transition-all placeholder:text-[#94A3B8] placeholder:font-medium";
-const TEXTAREA_CLASSES = "w-full px-5 py-4 bg-white border border-[#E2E8F0] rounded-xl text-[14px] font-bold text-[#0F172A] outline-none focus:border-[#2563EB] focus:ring-4 focus:ring-blue-500/5 transition-all placeholder:text-[#94A3B8] placeholder:font-medium resize-none";
-const SECTION_CONTAINER = "p-6 sm:p-8 border border-[#E2E8F0] rounded-[24px] sm:rounded-[32px] bg-white space-y-6 relative overflow-hidden";
 const LABEL_CLASSES = "text-[10px] sm:text-[11px] font-black text-[#475569] mb-2 block uppercase tracking-widest";
 const PRIMARY_BUTTON_CLASSES = "h-[60px] px-10 bg-[#2563EB] text-white rounded-[20px] text-[13px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/25 hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-3 w-full sm:w-auto";
+const SECTION_CONTAINER = "p-6 sm:p-8 border border-[#E2E8F0] rounded-[24px] sm:rounded-[32px] bg-white space-y-6 relative overflow-hidden";
 
 const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, clients, developers, initialData }) => {
   const [formData, setFormData] = useState<any>({
     name: '',
-    clientId: '',
-    projectType: '40-30-30' as ProjectType,
-    priority: 'Medium' as Priority,
-    notes: '',
-    baseProjectAmount: 0,
-    currency: 'USD',
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: '',
+    client_id: '',
     status: 'Pending' as ProjectStatus,
-    squad: [] as any[],
-    additionalCosts: [] as any[],
-    tasks: [],
+    currency: 'USD',
+    start_date: new Date().toISOString().split('T')[0],
+    end_date: '',
+    total_revenue: 0,
+    developers: [] as any[],
+    additional_costs: [] as any[],
+    notes: ''
   });
 
   useEffect(() => {
     if (initialData) {
-      setFormData({ ...initialData });
+      // Map initial data to form.
+      // initialData comes from API (snake_case)
+      setFormData({
+        id: initialData.id,
+        name: initialData.name,
+        client_id: initialData.client_id,
+        status: initialData.status,
+        currency: initialData.currency || 'USD',
+        start_date: initialData.start_date || new Date().toISOString().split('T')[0],
+        end_date: initialData.end_date || '',
+        total_revenue: initialData.total_revenue || 0,
+        developers: (initialData.developers || []).map(d => ({ id: d.id, cost: d.cost })), // Map to flat structure for form if needed
+        additional_costs: initialData.additional_costs || [],
+        notes: initialData.notes || ''
+      });
     } else {
       setFormData({
         name: '',
-        clientId: '',
-        projectType: '40-30-30',
-        priority: 'Medium',
-        notes: '',
-        baseProjectAmount: 0,
-        currency: 'USD',
-        startDate: new Date().toISOString().split('T')[0],
-        endDate: '',
+        client_id: '',
         status: 'Pending',
-        squad: [],
-        additionalCosts: [],
-        tasks: [],
+        currency: 'USD',
+        start_date: new Date().toISOString().split('T')[0],
+        end_date: '',
+        total_revenue: 0,
+        developers: [],
+        additional_costs: [],
+        notes: ''
       });
     }
   }, [initialData, isOpen]);
 
   const financialSummary = useMemo(() => {
-    const baseRevenue = formData.baseProjectAmount || 0;
-    const totalAddCosts = calculateTotalAdditionalCosts(formData.additionalCosts || []);
-    const operatingExpense = totalAddCosts * 0.2; // 20% actual cost
+    const revenue = parseFloat(formData.total_revenue) || 0;
 
-    const totalRevenue = baseRevenue + totalAddCosts;
-    const devCosts = calculateDeveloperTotalPayout(formData.squad || []);
-    const totalInvestment = operatingExpense + devCosts;
-    const profit = totalRevenue - totalInvestment;
+    // Additional Costs
+    const totalAddCosts = calculateTotalAdditionalCosts(formData.additional_costs || []); // Sum of amounts
+
+    // Developer Costs
+    // Map formData.developers (which has {id, cost})
+    const devCosts = (formData.developers || []).reduce((sum: number, d: any) => sum + (parseFloat(d.cost) || 0), 0);
+
+    const totalCosts = totalAddCosts + devCosts;
+    const profit = revenue - totalCosts;
 
     return {
-      revenue: totalRevenue,
-      operatingExpense,
+      revenue,
+      totalCosts,
       devCosts,
+      additionalCosts: totalAddCosts,
       profit,
-      profitMargin: totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0
+      profitMargin: revenue > 0 ? (profit / revenue) * 100 : 0
     };
-  }, [formData.baseProjectAmount, formData.additionalCosts, formData.squad]);
+  }, [formData.total_revenue, formData.additional_costs, formData.developers]);
 
   if (!isOpen) return null;
 
   const handleUpdateDeveloper = (index: number, field: string, value: any) => {
-    const newSquad = [...formData.squad];
-    newSquad[index] = { ...newSquad[index], [field]: value };
-    setFormData({ ...formData, squad: newSquad });
+    const newDevs = [...formData.developers];
+    newDevs[index] = { ...newDevs[index], [field]: value };
+    setFormData({ ...formData, developers: newDevs });
   };
 
-  const milestones = getMilestonesByProjectType(formData.projectType, formData.baseProjectAmount);
+  const handleAddDeveloper = () => {
+    setFormData({ ...formData, developers: [...formData.developers, { id: '', cost: 0 }] });
+  };
+
+  const handleRemoveDeveloper = (index: number) => {
+    const newDevs = [...formData.developers];
+    newDevs.splice(index, 1);
+    setFormData({ ...formData, developers: newDevs });
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-md">
@@ -99,7 +116,9 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
 
         <div className="px-6 sm:px-12 py-8 sm:py-10 border-b border-[#F8FAFC] flex items-center justify-between sticky top-0 bg-white z-20">
           <div>
-            <h2 className="text-xl sm:text-3xl font-black text-[#0F172A] tracking-tighter">{initialData ? 'Update Deployment' : 'New Project Deployment'}</h2>
+            <h2 className="text-xl sm:text-3xl font-black text-[#0F172A] tracking-tighter">
+              {initialData ? 'Update Project' : 'New Project'}
+            </h2>
             <p className="text-xs sm:text-base text-[#94A3B8] font-medium mt-1">Strategic resource allocation and budgeting.</p>
           </div>
           <button onClick={onClose} className="p-2 sm:p-3 text-[#94A3B8] hover:text-[#0F172A] hover:bg-slate-50 rounded-2xl transition-all">
@@ -109,10 +128,11 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
 
         <form onSubmit={(e) => { e.preventDefault(); onSubmit(formData); }} className="px-6 sm:px-12 py-6 sm:py-10 space-y-6 sm:space-y-10">
 
+          {/* Financial Summary */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <FinancialWidget label="Estimated Profit" value={formatCurrency(financialSummary.profit, formData.currency)} color="emerald" sub={`${financialSummary.profitMargin.toFixed(1)}% Yield`} />
-            <FinancialWidget label="Technical Spend" value={formatCurrency(financialSummary.devCosts, formData.currency)} color="blue" sub={`${formData.squad.length} Engineers`} />
-            <FinancialWidget label="Operating Expense (20%)" value={formatCurrency(financialSummary.operatingExpense, formData.currency)} color="amber" sub="External Costs" />
+            <FinancialWidget label="Project Profit" value={formatCurrency(financialSummary.profit, formData.currency)} color="emerald" sub={`${financialSummary.profitMargin.toFixed(1)}% Margin`} />
+            <FinancialWidget label="Technical Spend" value={formatCurrency(financialSummary.devCosts, formData.currency)} color="blue" sub={`${formData.developers.length} Developers`} />
+            <FinancialWidget label="Additional Costs" value={formatCurrency(financialSummary.additionalCosts, formData.currency)} color="amber" sub="External Costs" />
           </div>
 
           <div className={SECTION_CONTAINER}>
@@ -123,166 +143,127 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
               <div className="space-y-1">
-                <label className={LABEL_CLASSES}>Project Title</label>
+                <label className={LABEL_CLASSES}>Project Name</label>
                 <input required className={INPUT_CLASSES} value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
               </div>
               <div className="space-y-1">
-                <label className={LABEL_CLASSES}>Lifecycle Status</label>
+                <label className={LABEL_CLASSES}>Status</label>
                 <select className={INPUT_CLASSES} value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })}>
-                  <option value="Pending">Pending Approval</option>
-                  <option value="Approved">Approved</option>
-                  <option value="Ongoing">Active Development</option>
-                  <option value="On Hold">On Hold</option>
-                  <option value="Completed">Completed / Archived</option>
-                  <option value="Cancelled">Cancelled</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Active">Active</option>
+                  <option value="Completed">Completed</option>
                 </select>
               </div>
               <div className="space-y-1">
-                <label className={LABEL_CLASSES}>Client Partner</label>
-                <select required className={INPUT_CLASSES} value={formData.clientId} onChange={e => setFormData({ ...formData, clientId: e.target.value })}>
-                  <option value="">Select Enterprise Client</option>
-                  {clients.map(c => <option key={c.id} value={c.id}>{c.companyName}</option>)}
+                <label className={LABEL_CLASSES}>Client</label>
+                <select required className={INPUT_CLASSES} value={formData.client_id} onChange={e => setFormData({ ...formData, client_id: e.target.value })}>
+                  <option value="">Select Client</option>
+                  {clients.map(c => <option key={c.id} value={c.id}>{c.company_name}</option>)}
                 </select>
               </div>
               <div className="space-y-1">
-                <label className={LABEL_CLASSES}>Strategic Priority</label>
-                <select className={INPUT_CLASSES} value={formData.priority} onChange={e => setFormData({ ...formData, priority: e.target.value })}>
-                  <option value="Low">Low Priority</option>
-                  <option value="Medium">Standard Priority</option>
-                  <option value="High">High-Stakes Priority</option>
-                </select>
+                <label className={LABEL_CLASSES}>Total Revenue (Contract Value)</label>
+                <input type="number" className={INPUT_CLASSES} value={formData.total_revenue || ''} onChange={e => setFormData({ ...formData, total_revenue: parseFloat(e.target.value) || 0 })} />
               </div>
               <div className="space-y-1">
-                <label className={LABEL_CLASSES}>Total Project Cost (USD)</label>
-                <input type="number" className={INPUT_CLASSES} value={formData.baseProjectAmount || ''} onChange={e => setFormData({ ...formData, baseProjectAmount: parseFloat(e.target.value) || 0 })} />
+                <label className={LABEL_CLASSES}>Start Date</label>
+                <input type="date" className={INPUT_CLASSES} value={formData.start_date} onChange={e => setFormData({ ...formData, start_date: e.target.value })} />
               </div>
               <div className="space-y-1">
-                <label className={LABEL_CLASSES}>Payment Structure</label>
-                <select className={INPUT_CLASSES} value={formData.projectType} onChange={e => setFormData({ ...formData, projectType: e.target.value })}>
-                  <option value="40-30-30">Default (40% / 30% / 30%)</option>
-                  <option value="Full Payment Upfront">Upfront (100%)</option>
-                  <option value="Custom Milestone">Custom Allocation</option>
-                </select>
+                <label className={LABEL_CLASSES}>End Date (Deadline)</label>
+                <input type="date" className={INPUT_CLASSES} value={formData.end_date} onChange={e => setFormData({ ...formData, end_date: e.target.value })} />
               </div>
             </div>
           </div>
 
+          {/* Developers */}
           <div className={SECTION_CONTAINER}>
             <div className="flex items-center justify-between mb-4 sm:mb-8">
               <div className="flex items-center gap-3 text-indigo-600">
                 <ICONS.Teams />
-                <h3 className="text-[10px] sm:text-[12px] font-black uppercase tracking-[0.2em]">Engineering Squad (40/60 Split)</h3>
+                <h3 className="text-[10px] sm:text-[12px] font-black uppercase tracking-[0.2em]">Developers & Costs</h3>
               </div>
-              <button type="button" onClick={() => setFormData({ ...formData, squad: [...formData.squad, { developerId: '', totalCost: 0, isAdvancePaid: false, isFinalPaid: false }] })} className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">+ Assign Resource</button>
+              <button type="button" onClick={handleAddDeveloper} className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">+ Assign Developer</button>
             </div>
 
             <div className="space-y-4">
-              {formData.squad.map((s: any, idx: number) => {
-                const splits = getDevPayoutSplits(s.totalCost || 0);
-                return (
-                  <div key={idx} className="p-6 bg-slate-50 rounded-2xl border border-slate-100 space-y-4">
-                    <div className="flex flex-col sm:flex-row gap-4 sm:items-end">
-                      <div className="flex-1 space-y-1">
-                        <label className={LABEL_CLASSES}>Resource</label>
-                        <select required className={INPUT_CLASSES} value={s.developerId} onChange={e => handleUpdateDeveloper(idx, 'developerId', e.target.value)}>
-                          <option value="">Select Resource</option>
-                          {developers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                        </select>
-                      </div>
-                      <div className="flex-1 space-y-1">
-                        <label className={LABEL_CLASSES}>Total Compensation</label>
-                        <input type="number" className={INPUT_CLASSES} value={s.totalCost || ''} onChange={e => handleUpdateDeveloper(idx, 'totalCost', parseFloat(e.target.value) || 0)} />
-                      </div>
-                      <button type="button" onClick={() => {
-                        const newSquad = [...formData.squad];
-                        newSquad.splice(idx, 1);
-                        setFormData({ ...formData, squad: newSquad });
-                      }} className="p-3 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all h-[52px] flex items-center justify-center">
-                        <ICONS.Delete />
-                      </button>
-                    </div>
-                    {s.totalCost > 0 && (
-                      <div className="flex gap-4">
-                        <div className="flex-1 bg-white p-3 rounded-xl border border-slate-100">
-                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Advance (40%)</p>
-                          <p className="text-sm font-bold text-[#0F172A]">{formatCurrency(splits.advance, formData.currency)}</p>
-                        </div>
-                        <div className="flex-1 bg-white p-3 rounded-xl border border-slate-100">
-                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Final (60%)</p>
-                          <p className="text-sm font-bold text-[#0F172A]">{formatCurrency(splits.remaining, formData.currency)}</p>
-                        </div>
-                      </div>
-                    )}
+              {formData.developers.map((dev: any, idx: number) => (
+                <div key={idx} className="p-6 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col sm:flex-row gap-4 sm:items-end">
+                  <div className="flex-1 space-y-1">
+                    <label className={LABEL_CLASSES}>Developer</label>
+                    <select required className={INPUT_CLASSES} value={dev.id} onChange={e => handleUpdateDeveloper(idx, 'id', e.target.value)}>
+                      <option value="">Select Developer</option>
+                      {developers.map(d => <option key={d.id} value={d.id}>{d.name} ({d.role})</option>)}
+                    </select>
                   </div>
-                );
-              })}
+                  <div className="flex-1 space-y-1">
+                    <label className={LABEL_CLASSES}>Cost for Project</label>
+                    <input type="number" className={INPUT_CLASSES} value={dev.cost || ''} onChange={e => handleUpdateDeveloper(idx, 'cost', parseFloat(e.target.value) || 0)} />
+                  </div>
+                  <button type="button" onClick={() => handleRemoveDeveloper(idx)} className="p-3 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all h-[52px] flex items-center justify-center">
+                    <ICONS.Delete />
+                  </button>
+                </div>
+              ))}
+              {formData.developers.length === 0 && <p className="text-center text-slate-400 font-medium text-sm">No developers assigned.</p>}
             </div>
           </div>
 
+          {/* Additional Costs */}
           <div className={SECTION_CONTAINER}>
             <div className="flex items-center justify-between mb-4 sm:mb-8">
               <div className="flex items-center gap-3 text-amber-600">
                 <ICONS.Finances />
-                <h3 className="text-[10px] sm:text-[12px] font-black uppercase tracking-[0.2em]">Additional Operational Costs</h3>
+                <h3 className="text-[10px] sm:text-[12px] font-black uppercase tracking-[0.2em]">Additional Costs</h3>
               </div>
-              <button type="button" onClick={() => setFormData({ ...formData, additionalCosts: [...formData.additionalCosts, { id: Date.now().toString(), name: '', amount: 0, description: '' }] })} className="text-[10px] font-black text-amber-600 uppercase tracking-widest">+ Add Cost Item</button>
+              <button type="button" onClick={() => setFormData({ ...formData, additional_costs: [...formData.additional_costs, { description: '', amount: 0 }] })} className="text-[10px] font-black text-amber-600 uppercase tracking-widest">+ Add Cost</button>
             </div>
 
             <div className="space-y-4">
-              {formData.additionalCosts.map((cost: any, idx: number) => (
-                <div key={idx} className="p-6 bg-slate-50 rounded-2xl border border-slate-100 space-y-4">
-                  <div className="flex flex-col sm:flex-row gap-4 sm:items-end">
-                    <div className="flex-[2] space-y-1">
-                      <label className={LABEL_CLASSES}>Cost Item Name</label>
-                      <input
-                        required
-                        placeholder="e.g. Server Licensing, Third-party API"
-                        className={INPUT_CLASSES}
-                        value={cost.name}
-                        onChange={e => {
-                          const newCosts = [...formData.additionalCosts];
-                          newCosts[idx] = { ...newCosts[idx], name: e.target.value };
-                          setFormData({ ...formData, additionalCosts: newCosts });
-                        }}
-                      />
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <label className={LABEL_CLASSES}>Cost Amount ($)</label>
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
-                        <input
-                          type="number"
-                          className={`${INPUT_CLASSES} pl-8`}
-                          value={cost.amount || ''}
-                          onChange={e => {
-                            const newCosts = [...formData.additionalCosts];
-                            newCosts[idx] = { ...newCosts[idx], amount: parseFloat(e.target.value) || 0 };
-                            setFormData({ ...formData, additionalCosts: newCosts });
-                          }}
-                        />
-                      </div>
-                    </div>
-                    <button type="button" onClick={() => {
-                      const newCosts = [...formData.additionalCosts];
-                      newCosts.splice(idx, 1);
-                      setFormData({ ...formData, additionalCosts: newCosts });
-                    }} className="p-3 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all h-[52px] flex items-center justify-center">
-                      <ICONS.Delete />
-                    </button>
+              {formData.additional_costs.map((cost: any, idx: number) => (
+                <div key={idx} className="p-6 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col sm:flex-row gap-4 sm:items-end">
+                  <div className="flex-[2] space-y-1">
+                    <label className={LABEL_CLASSES}>Description</label>
+                    <input
+                      required
+                      className={INPUT_CLASSES}
+                      value={cost.description}
+                      onChange={e => {
+                        const newCosts = [...formData.additional_costs];
+                        newCosts[idx] = { ...newCosts[idx], description: e.target.value };
+                        setFormData({ ...formData, additional_costs: newCosts });
+                      }}
+                    />
                   </div>
+                  <div className="flex-1 space-y-1">
+                    <label className={LABEL_CLASSES}>Amount</label>
+                    <input
+                      type="number"
+                      className={INPUT_CLASSES}
+                      value={cost.amount || ''}
+                      onChange={e => {
+                        const newCosts = [...formData.additional_costs];
+                        newCosts[idx] = { ...newCosts[idx], amount: parseFloat(e.target.value) || 0 };
+                        setFormData({ ...formData, additional_costs: newCosts });
+                      }}
+                    />
+                  </div>
+                  <button type="button" onClick={() => {
+                    const newCosts = [...formData.additional_costs];
+                    newCosts.splice(idx, 1);
+                    setFormData({ ...formData, additional_costs: newCosts });
+                  }} className="p-3 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all h-[52px] flex items-center justify-center">
+                    <ICONS.Delete />
+                  </button>
                 </div>
               ))}
-              {formData.additionalCosts.length === 0 && (
-                <div className="text-center py-8 border-2 border-dashed border-slate-200 rounded-2xl">
-                  <p className="text-xs font-bold text-slate-400">No additional costs recorded</p>
-                </div>
-              )}
+              {formData.additional_costs.length === 0 && <p className="text-center text-slate-400 font-medium text-sm">No additional costs.</p>}
             </div>
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-end gap-4 pt-6 pb-12 sm:pb-0">
             <button type="button" onClick={onClose} className="w-full sm:w-auto px-8 py-4 text-xs font-black text-[#64748B] uppercase tracking-[0.2em]">Discard</button>
-            <button type="submit" className={PRIMARY_BUTTON_CLASSES}>Commit Deployment</button>
+            <button type="submit" className={PRIMARY_BUTTON_CLASSES}>Save Project</button>
           </div>
         </form>
       </div>

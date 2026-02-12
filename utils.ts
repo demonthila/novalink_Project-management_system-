@@ -1,9 +1,12 @@
 
-import { Project, Milestone, AdditionalCost, DeveloperAssignment } from './types';
+import { Project, Payment, AdditionalCost, ProjectDeveloper } from './types';
 
-export const formatCurrency = (amount: number, currency: string = 'USD') => {
-  const matches = (currency || 'USD').match(/[A-Z]{3}/i);
-  const isoCode = (matches ? matches[0] : 'USD').toUpperCase();
+export const formatCurrency = (amount: number, currency: string = 'AUD') => {
+  const storedCurrency = typeof window !== 'undefined' ? localStorage.getItem('stratis_currency') : 'AUD';
+  const targetCurrency = currency && currency !== 'LKR' ? currency : (storedCurrency || 'AUD');
+
+  const matches = (targetCurrency || 'AUD').match(/[A-Z]{3}/i);
+  const isoCode = (matches ? matches[0] : 'AUD').toUpperCase();
 
   try {
     return new Intl.NumberFormat('en-US', {
@@ -14,37 +17,35 @@ export const formatCurrency = (amount: number, currency: string = 'USD') => {
   } catch (e) {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'AUD',
     }).format(amount || 0);
   }
 };
 
 export const calculateTotalAdditionalCosts = (costs: AdditionalCost[]) => {
-  return (costs || []).reduce((sum, cost) => sum + (cost.amount || 0), 0);
+  return (costs || []).reduce((sum, cost) => sum + Number(cost.amount || 0), 0);
 };
 
 export const calculateGrandTotal = (project: Project) => {
   if (!project) return 0;
-  return (project.baseProjectAmount || 0) + calculateTotalAdditionalCosts(project.additionalCosts);
+  return Number(project.total_revenue || 0);
 };
 
 export const calculatePaidAmount = (project: Project) => {
-  if (!project || !project.milestones) return 0;
-  return project.milestones
-    .filter(m => m.isPaid)
-    .reduce((sum, m) => sum + (m.amount || 0), 0);
+  if (!project || !project.payments) return 0;
+  return project.payments
+    .filter(p => p.status === 'Paid')
+    .reduce((sum, p) => sum + Number(p.amount || 0), 0);
 };
 
-export const calculateDeveloperTotalPayout = (squad: DeveloperAssignment[]) => {
-  return (squad || []).reduce((sum, dev) => sum + (dev.totalCost || 0), 0);
+export const calculateDeveloperTotalPayout = (developers: ProjectDeveloper[]) => {
+  return (developers || []).reduce((sum, dev) => sum + Number(dev.cost || 0), 0);
 };
 
 export const calculateProjectProfit = (project: Project) => {
   if (!project) return 0;
-  const revenue = calculateGrandTotal(project);
-  const devExpenses = calculateDeveloperTotalPayout(project.squad || []);
-  const otherExpenses = calculateTotalAdditionalCosts(project.additionalCosts) * 0.2; // Only 20% is actual expense, 80% is profit
-  return revenue - (devExpenses + otherExpenses);
+  // Backend provides this, but if we need to calc client-side:
+  return Number(project.total_profit || 0);
 };
 
 export const generateInvoiceNumber = () => {
@@ -52,35 +53,6 @@ export const generateInvoiceNumber = () => {
   const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
   const random = Math.floor(1000 + Math.random() * 9000);
   return `${prefix}-${date}-${random}`;
-};
-
-export const getMilestonesByProjectType = (type: string, amount: number): Milestone[] => {
-  const safeAmount = amount || 0;
-  switch (type) {
-    case '40-30-30':
-    case '30-30-40': // Legacy support but defaulting to 40-30-30
-      return [
-        { label: 'Upfront Payment (40%)', amount: Math.round(safeAmount * 0.4), isPaid: false },
-        { label: 'Middle Payment (30%)', amount: Math.round(safeAmount * 0.3), isPaid: false },
-        { label: 'Final Payment (30%)', amount: Math.round(safeAmount * 0.3), isPaid: false },
-      ];
-    case 'Full Payment Upfront':
-      return [
-        { label: 'Full Payment (100%)', amount: safeAmount, isPaid: false },
-      ];
-    case 'Custom Milestone':
-    default:
-      return [
-        { label: 'Initial Milestone', amount: safeAmount, isPaid: false },
-      ];
-  }
-};
-
-export const getDevPayoutSplits = (total: number) => {
-  return {
-    advance: Math.round(total * 0.4),
-    remaining: Math.round(total * 0.6)
-  };
 };
 
 /**

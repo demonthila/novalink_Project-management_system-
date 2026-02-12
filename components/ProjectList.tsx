@@ -11,35 +11,33 @@ interface ProjectListProps {
   onAdd: () => void;
   onUpdate: (project: Project) => void;
   onEdit: (project: Project) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: number) => void;
   onView: (project: Project) => void;
-  onGenerateInvoice?: (project: Project) => void;
   title?: string;
   description?: string;
 }
 
-const ProjectList: React.FC<ProjectListProps> = ({ 
-  projects, 
-  clients, 
-  developers, 
-  onAdd, 
+const ProjectList: React.FC<ProjectListProps> = ({
+  projects,
+  clients,
+  developers,
+  onAdd,
   onUpdate,
   onEdit,
-  onDelete, 
+  onDelete,
   onView,
-  onGenerateInvoice,
   title = "Active Projects Queue",
   description = "Review and manage live project workflows."
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  
-  const filtered = projects.filter(p => 
+
+  const filtered = projects.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    clients.find(c => c.id === p.clientId)?.companyName.toLowerCase().includes(searchTerm.toLowerCase())
+    clients.find(c => c.id === p.client_id)?.company_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleRestore = (project: Project) => {
-    onUpdate({ ...project, status: 'Ongoing' });
+    onUpdate({ ...project, status: 'Active' });
   };
 
   return (
@@ -51,13 +49,13 @@ const ProjectList: React.FC<ProjectListProps> = ({
           <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
           <span className="text-[#64748B] font-bold">{title}</span>
         </nav>
-        
+
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="max-w-xl">
             <h1 className="text-2xl sm:text-3xl font-bold text-[#0F172A] tracking-tight">{title}</h1>
             <p className="text-[#64748B] text-sm sm:text-lg mt-1 font-medium">{description}</p>
           </div>
-          <button 
+          <button
             onClick={onAdd}
             className="w-full sm:w-auto h-[56px] sm:h-[60px] px-8 sm:px-10 bg-[#2563EB] text-white rounded-[16px] sm:rounded-[20px] text-xs sm:text-[13px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/25 hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-3"
           >
@@ -72,9 +70,9 @@ const ProjectList: React.FC<ProjectListProps> = ({
         <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-[#94A3B8]">
           <ICONS.Search />
         </div>
-        <input 
-          type="text" 
-          placeholder="Search projects..." 
+        <input
+          type="text"
+          placeholder="Search projects..."
           className="w-full h-[52px] pl-12 pr-4 bg-white border border-[#E2E8F0] rounded-xl text-[14px] font-bold shadow-sm outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-[#2563EB] transition-all text-[#0F172A] placeholder:text-[#94A3B8] placeholder:font-medium"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -90,25 +88,26 @@ const ProjectList: React.FC<ProjectListProps> = ({
                 <th className="px-6 sm:px-8 py-5">PROJECT NAME</th>
                 <th className="px-6 sm:px-8 py-5">CLIENT NAME</th>
                 <th className="px-6 sm:px-8 py-5">SQUAD</th>
-                <th className="px-6 sm:px-8 py-5">TOTAL COST</th>
+                <th className="px-6 sm:px-8 py-5">TOTAL REVENUE</th>
                 <th className="px-6 sm:px-8 py-5">STATUS</th>
-                <th className="px-6 sm:px-8 py-5">INVOICE</th>
                 <th className="px-6 sm:px-8 py-5 text-right">ACTIONS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#F1F5F9]">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-8 py-16 text-center text-[#94A3B8] font-medium">
+                  <td colSpan={6} className="px-8 py-16 text-center text-[#94A3B8] font-medium">
                     No matching projects found in this queue.
                   </td>
                 </tr>
               ) : (
                 filtered.map((p) => {
-                  const client = clients.find(c => c.id === p.clientId);
-                  const assignedDevs = developers.filter(d => (p.squad || []).some(s => s.developerId === d.id));
-                  const isArchived = ['Completed', 'Cancelled', 'Rejected'].includes(p.status);
-                  
+                  const client = clients.find(c => c.id === p.client_id);
+                  const assignedDevs = (p.developers || []).map(pd => pd.name); // Using embedded names or join with developers list?
+                  // p.developers comes from API with names fully populated in my projects.php query
+
+                  const isArchived = ['Completed', 'Cancelled'].includes(p.status);
+
                   return (
                     <tr key={p.id} className="hover:bg-blue-50/20 transition-colors group">
                       <td className="px-6 sm:px-8 py-5">
@@ -118,18 +117,18 @@ const ProjectList: React.FC<ProjectListProps> = ({
                         </div>
                       </td>
                       <td className="px-6 sm:px-8 py-5 text-sm font-medium text-[#475569]">
-                        {client?.companyName || 'Private'}
+                        {client?.company_name || 'Private'}
                       </td>
                       <td className="px-6 sm:px-8 py-5">
                         <div className="flex items-center -space-x-1.5">
-                          {assignedDevs.slice(0, 3).map((d) => (
+                          {(p.developers || []).slice(0, 3).map((d) => (
                             <div key={d.id} className="w-7 h-7 rounded-full bg-[#0F172A] border-2 border-white flex items-center justify-center text-white text-[9px] font-black" title={d.name}>
-                              {d.name.split(' ').map(n => n[0]).join('')}
+                              {d.name.split(' ').map((n: string) => n[0]).join('')}
                             </div>
                           ))}
-                          {assignedDevs.length > 3 && (
+                          {(p.developers || []).length > 3 && (
                             <div className="w-7 h-7 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-slate-500 text-[9px] font-bold">
-                              +{assignedDevs.length - 3}
+                              +{(p.developers || []).length - 3}
                             </div>
                           )}
                         </div>
@@ -138,29 +137,18 @@ const ProjectList: React.FC<ProjectListProps> = ({
                         {formatCurrency(calculateGrandTotal(p), p.currency)}
                       </td>
                       <td className="px-6 sm:px-8 py-5">
-                        <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black tracking-widest uppercase ${
-                          p.status === 'Completed' ? 'bg-slate-100 text-slate-500' : 
-                          p.status === 'Ongoing' ? 'bg-blue-50 text-blue-600' :
-                          p.status === 'On Hold' ? 'bg-amber-50 text-amber-600' :
-                          p.status === 'Cancelled' ? 'bg-rose-50 text-rose-600' :
-                          'bg-emerald-50 text-emerald-600'
-                        }`}>
+                        <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black tracking-widest uppercase ${p.status === 'Completed' ? 'bg-slate-100 text-slate-500' :
+                            p.status === 'Active' ? 'bg-blue-50 text-blue-600' :
+                              'bg-emerald-50 text-emerald-600'
+                          }`}>
                           {p.status}
                         </span>
-                      </td>
-                      <td className="px-6 sm:px-8 py-5">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-1.5 h-1.5 rounded-full ${p.isInvoiceIssued ? 'bg-[#2563EB]' : 'bg-[#94A3B8]'}`} />
-                          <span className="text-xs font-medium text-[#64748B]">
-                            {p.isInvoiceIssued ? 'Sent' : 'Open'}
-                          </span>
-                        </div>
                       </td>
                       <td className="px-6 sm:px-8 py-5 text-right">
                         <div className="flex items-center justify-end gap-1 sm:opacity-0 group-hover:opacity-100 transition-all">
                           {isArchived && (
-                            <button 
-                              onClick={() => handleRestore(p)} 
+                            <button
+                              onClick={() => handleRestore(p)}
                               className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors"
                               title="Restore to Active"
                             >

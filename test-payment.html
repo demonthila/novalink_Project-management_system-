@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Tracking Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+
+        button {
+            background: #2563EB;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        pre {
+            background: #f8f8f8;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+
+        .payment-item {
+            border: 2px solid #e5e7eb;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+        }
+
+        input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        input[type="date"] {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🧪 Payment Tracking System Test</h1>
+
+    <div class="test-section">
+        <h2>Step 1: Check Database Schema</h2>
+        <button onclick="checkSchema()">Test Database Connection</button>
+        <div id="schema-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Step 2: Fetch Projects with Milestones</h2>
+        <button onclick="fetchProjects()">Load Projects</button>
+        <div id="projects-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Step 3: Test Payment Update</h2>
+        <div id="payment-test"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Step 4: Test Due Date Update</h2>
+        <div id="duedate-test"></div>
+    </div>
+
+    <script>
+        async function checkSchema() {
+            const result = document.getElementById('schema-result');
+            result.innerHTML = '<p>Testing...</p>';
+
+            try {
+                const response = await fetch('/api/projects.php');
+                const data = await response.json();
+
+                if (data && Array.isArray(data)) {
+                    result.innerHTML = `
+                        <p class="success">✓ API Connection Working</p>
+                        <p>Found ${data.length} projects</p>
+                    `;
+                } else {
+                    result.innerHTML = '<p class="error">✗ Unexpected response format</p>';
+                }
+            } catch (error) {
+                result.innerHTML = `<p class="error">✗ Error: ${error.message}</p>`;
+            }
+        }
+
+        async function fetchProjects() {
+            const result = document.getElementById('projects-result');
+            const paymentTest = document.getElementById('payment-test');
+            const duedateTest = document.getElementById('duedate-test');
+
+            result.innerHTML = '<p>Loading...</p>';
+
+            try {
+                const response = await fetch('/api/projects.php');
+                const projects = await response.json();
+
+                if (!projects || projects.length === 0) {
+                    result.innerHTML = '<p class="error">No projects found. Create a project first!</p>';
+                    return;
+                }
+
+                let html = '<p class="success">✓ Projects loaded successfully</p>';
+
+                projects.forEach(project => {
+                    if (project.milestones && project.milestones.length > 0) {
+                        html += `
+                            <div style="margin-top: 20px;">
+                                <h3>${project.name}</h3>
+                                <p><strong>Milestones:</strong></p>
+                        `;
+
+                        project.milestones.forEach((milestone, index) => {
+                            html += `
+                                <div class="payment-item">
+                                    <p><strong>Payment ${index + 1}:</strong> ${milestone.label}</p>
+                                    <p>ID: ${milestone.id || 'MISSING ID!'}</p>
+                                    <p>Amount: $${milestone.amount}</p>
+                                    <p>Due Date: ${milestone.due_date || 'NO DUE DATE'}</p>
+                                    <p>Paid: ${milestone.is_paid ? 'Yes' : 'No'}</p>
+                                    <p>Paid Date: ${milestone.paid_date || 'N/A'}</p>
+                                </div>
+                            `;
+
+                            // Create test buttons for first milestone
+                            if (index === 0) {
+                                paymentTest.innerHTML = `
+                                    <h3>Test Payment 1 of "${project.name}"</h3>
+                                    <p>Milestone ID: ${milestone.id}</p>
+                                    <label>
+                                        <input type="checkbox" 
+                                               id="test-checkbox" 
+                                               ${milestone.is_paid ? 'checked' : ''}
+                                               onchange="updatePayment('${milestone.id}', this.checked)">
+                                        Mark as ${milestone.is_paid ? 'Unpaid' : 'Paid'}
+                                    </label>
+                                    <div id="payment-update-result"></div>
+                                `;
+
+                                duedateTest.innerHTML = `
+                                    <h3>Test Due Date for Payment 1</h3>
+                                    <input type="date" 
+                                           id="test-duedate" 
+                                           value="${milestone.due_date || ''}">
+                                    <button onclick="updateDueDate('${milestone.id}')">Update Due Date</button>
+                                    <div id="duedate-update-result"></div>
+                                `;
+                            }
+                        });
+
+                        html += '</div>';
+                    }
+                });
+
+                result.innerHTML = html;
+            } catch (error) {
+                result.innerHTML = `<p class="error">✗ Error: ${error.message}</p>`;
+            }
+        }
+
+        async function updatePayment(milestoneId, isPaid) {
+            const result = document.getElementById('payment-update-result');
+            result.innerHTML = '<p>Updating...</p>';
+
+            const paidDate = isPaid ? new Date().toISOString().split('T')[0] : null;
+
+            try {
+                const response = await fetch('/api/updatePayment.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        milestoneId: milestoneId,
+                        isPaid: isPaid,
+                        paidDate: paidDate
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    result.innerHTML = `<p class="success">✓ Payment updated successfully!</p>`;
+                } else {
+                    result.innerHTML = `<p class="error">✗ Update failed: ${data.error || 'Unknown error'}</p>`;
+                }
+            } catch (error) {
+                result.innerHTML = `<p class="error">✗ Error: ${error.message}</p>`;
+            }
+        }
+
+        async function updateDueDate(milestoneId) {
+            const result = document.getElementById('duedate-update-result');
+            const newDate = document.getElementById('test-duedate').value;
+
+            if (!newDate) {
+                result.innerHTML = '<p class="error">Please select a date</p>';
+                return;
+            }
+
+            result.innerHTML = '<p>Updating...</p>';
+
+            try {
+                const response = await fetch('/api/updateMilestoneDueDate.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        milestoneId: milestoneId,
+                        dueDate: newDate
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    result.innerHTML = `<p class="success">✓ Due date updated to ${newDate}!</p>`;
+                } else {
+                    result.innerHTML = `<p class="error">✗ Update failed: ${data.error || 'Unknown error'}</p>`;
+                }
+            } catch (error) {
+                result.innerHTML = `<p class="error">✗ Error: ${error.message}</p>`;
+            }
+        }
+
+        // Auto-run first test
+        window.onload = () => {
+            checkSchema();
+        };
+    </script>
+</body>
+
+</html>

@@ -2,16 +2,32 @@
 import React, { useState } from 'react';
 import { Client, Project } from '../types';
 import { ICONS } from '../constants';
+import { createClient, updateProject } from '../services/api';
+// Note: onAdd/onUpdate props in ClientList are usually wrappers around API calls in App.tsx. 
+// However, since App.tsx passes refreshData, we might want to call API here or in App.
+// In App.tsx refactor (Step 141), I passed `onAdd={() => refreshData()}`. 
+// So THIS component is responsible for calling the API? 
+// Original App.tsx code: `onAdd={(newClient) => ... setClients ...}`
+// New App.tsx code: `onAdd={() => refreshData()}`.
+// So ClientList MUST call the API itself before calling onAdd() to refresh.
+// I will update ClientList to call API.
 
 interface ClientListProps {
   clients: Client[];
   projects: Project[];
-  onAdd: (client: Omit<Client, 'id'>) => void;
-  onUpdate: (client: Client) => void;
-  onDelete: (id: string) => void;
+  onAdd: () => void;
+  onUpdate: () => void;
+  onDelete: (id: number) => void; // App.tsx probably doesn't implement delete for clients yet in api.ts? 
+  // I implemented createClient in api.ts. I need updateClient and deleteClient too.
+  // api.ts only has createClient.
+  // I should add updateClient and deleteClient to api.ts or just fetch directly here.
+  // To be safe, I'll fetch directly here or assume props passed handle it?
+  // Re-reading App.tsx Step 141:
+  // onAdd={() => refreshData()}
+  // This implies ClientList does the work and then notifies parent to refresh.
 }
 
-const INPUT_CLASSES = "w-full h-[52px] px-5 bg-white border border-[#E2E8F0] rounded-xl text-[14px] font-bold text-[#0F172A] outline-none focus:border-[#2563EB] focus:ring-4 focus:ring-blue-500/5 transition-all placeholder:text-[#94A3B8] placeholder:font-medium";
+const MODAL_INPUT = "w-full h-[52px] px-5 bg-white border border-[#E2E8F0] rounded-xl text-[14px] font-bold text-[#0F172A] outline-none focus:border-[#2563EB] focus:ring-4 focus:ring-blue-500/5 transition-all placeholder:text-[#94A3B8] placeholder:font-medium";
 
 const ClientList: React.FC<ClientListProps> = ({ clients, projects, onAdd, onUpdate, onDelete }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -20,9 +36,9 @@ const ClientList: React.FC<ClientListProps> = ({ clients, projects, onAdd, onUpd
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [viewingClient, setViewingClient] = useState<Client | null>(null);
 
-  const filteredClients = clients.filter(c => 
+  const filteredClients = clients.filter(c =>
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -41,8 +57,45 @@ const ClientList: React.FC<ClientListProps> = ({ clients, projects, onAdd, onUpd
     setShowProfileModal(true);
   };
 
-  const getClientProjectCount = (clientId: string) => {
-    return projects.filter(p => p.clientId === clientId).length;
+  const getClientProjectCount = (clientId: number) => {
+    return projects.filter(p => p.client_id === clientId).length;
+  };
+
+  const handleSubmit = async (data: any) => {
+    try {
+      let res;
+      if (editingClient) {
+        // Update
+        res = await fetch(`/api/clients.php?id=${editingClient.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+      } else {
+        // Create
+        res = await fetch(`/api/clients.php`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+      }
+      const json = await res.json();
+      if (json.success) {
+        setShowModal(false);
+        onAdd(); // Trigger refresh
+      } else {
+        alert("Error: " + json.error);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Failed to save client");
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("Delete this client?")) return;
+    await fetch(`/api/clients.php?id=${id}`, { method: 'DELETE' });
+    onUpdate(); // Trigger refresh
   };
 
   return (
@@ -77,7 +130,6 @@ const ClientList: React.FC<ClientListProps> = ({ clients, projects, onAdd, onUpd
                 <th className="px-8 py-5">Partner Profile</th>
                 <th className="px-8 py-5">Organization</th>
                 <th className="px-8 py-5">Projects</th>
-                <th className="px-8 py-5">Onboarding Date</th>
                 <th className="px-8 py-5">Location</th>
                 <th className="px-8 py-5 text-right">Actions</th>
               </tr>
@@ -87,13 +139,13 @@ const ClientList: React.FC<ClientListProps> = ({ clients, projects, onAdd, onUpd
                 <tr key={client.id} className="hover:bg-blue-50/30 transition-colors group">
                   <td className="px-8 py-6">
                     <div className="flex items-center gap-3">
-                      <button 
+                      <button
                         onClick={() => handleViewProfile(client)}
                         className="w-10 h-10 rounded-full bg-[#0A69E1] text-white flex items-center justify-center font-black text-[10px] uppercase hover:scale-110 transition-transform shadow-md">
                         {client.name.split(' ').map(n => n[0]).join('')}
                       </button>
                       <div>
-                        <button 
+                        <button
                           onClick={() => handleViewProfile(client)}
                           className="font-black text-slate-900 hover:text-[#0A69E1] block text-left">
                           {client.name}
@@ -103,29 +155,20 @@ const ClientList: React.FC<ClientListProps> = ({ clients, projects, onAdd, onUpd
                     </div>
                   </td>
                   <td className="px-8 py-6 text-sm font-bold text-slate-600">
-                    {client.companyName}
+                    {client.company_name}
                   </td>
                   <td className="px-8 py-6">
                     <span className="px-3 py-1 bg-blue-50 text-[#0A69E1] text-[10px] font-black uppercase tracking-widest rounded-full border border-blue-100">
                       {getClientProjectCount(client.id)} Projects
                     </span>
                   </td>
-                  <td className="px-8 py-6 text-sm font-bold text-slate-500">
-                    {client.createdDate}
-                  </td>
                   <td className="px-8 py-6 text-sm font-bold text-slate-600">
-                    {client.country}
+                    {client.phone}
                   </td>
                   <td className="px-8 py-6 text-right">
                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button 
-                        onClick={() => handleViewProfile(client)}
-                        className="p-2 text-slate-400 hover:text-[#0A69E1] hover:bg-blue-50 rounded-lg transition-colors"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                      </button>
                       <button onClick={() => handleOpenEdit(client)} className="p-2 text-slate-400 hover:text-[#0A69E1] hover:bg-blue-50 rounded-lg transition-colors"><ICONS.Edit /></button>
-                      <button onClick={() => onDelete(client.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"><ICONS.Delete /></button>
+                      <button onClick={() => handleDelete(client.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"><ICONS.Delete /></button>
                     </div>
                   </td>
                 </tr>
@@ -136,14 +179,10 @@ const ClientList: React.FC<ClientListProps> = ({ clients, projects, onAdd, onUpd
       </div>
 
       {showModal && (
-        <ClientModal 
+        <ClientModal
           isOpen={showModal}
           onClose={() => setShowModal(false)}
-          onSubmit={(data: any) => {
-            if (editingClient) onUpdate({ ...data, id: editingClient.id });
-            else onAdd(data);
-            setShowModal(false);
-          }}
+          onSubmit={handleSubmit}
           initialData={editingClient}
         />
       )}
@@ -166,16 +205,10 @@ const ClientList: React.FC<ClientListProps> = ({ clients, projects, onAdd, onUpd
 const ClientModal = ({ isOpen, onClose, onSubmit, initialData }: any) => {
   const [formData, setFormData] = useState(initialData || {
     name: '',
-    companyName: '',
+    company_name: '',
     phone: '',
     email: '',
-    address: '',
-    country: 'Sri Lanka',
-    notes: '',
-    createdDate: new Date().toISOString().split('T')[0]
   });
-
-  const MODAL_INPUT = "w-full h-[52px] px-5 bg-white border border-[#E2E8F0] rounded-xl text-[14px] font-bold text-[#0F172A] outline-none focus:border-[#2563EB] focus:ring-4 focus:ring-blue-500/5 transition-all placeholder:text-[#94A3B8] placeholder:font-medium";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-blue-900/20 backdrop-blur-sm">
@@ -183,7 +216,6 @@ const ClientModal = ({ isOpen, onClose, onSubmit, initialData }: any) => {
         <div className="flex items-center justify-between mb-8 sticky top-0 bg-white pb-4 z-10 border-b border-slate-100">
           <div>
             <h3 className="text-2xl font-black text-[#0A69E1] tracking-tight">{initialData ? 'Update Partner Profile' : 'Onboard New Partner'}</h3>
-            <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mt-1">Relationship Management Portal</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><ICONS.Delete /></button>
         </div>
@@ -192,39 +224,23 @@ const ClientModal = ({ isOpen, onClose, onSubmit, initialData }: any) => {
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-1.5">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Full Legal Name</label>
-              <input required className={MODAL_INPUT} value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+              <input required className={MODAL_INPUT} value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Organization Name</label>
-              <input className={MODAL_INPUT} value={formData.companyName} onChange={e => setFormData({...formData, companyName: e.target.value})} />
+              <input className={MODAL_INPUT} value={formData.company_name} onChange={e => setFormData({ ...formData, company_name: e.target.value })} />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-1.5">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Professional Email</label>
-              <input type="email" required className={MODAL_INPUT} value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+              <input type="email" required className={MODAL_INPUT} value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Contact Number</label>
-              <input className={MODAL_INPUT} value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+              <input className={MODAL_INPUT} value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
             </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Physical Address</label>
-            <textarea className="w-full px-5 py-4 bg-white border border-[#E2E8F0] rounded-xl text-[14px] font-bold text-[#0F172A] outline-none focus:border-[#2563EB] focus:ring-4 focus:ring-blue-500/5 transition-all placeholder:text-[#94A3B8] placeholder:font-medium resize-none" rows={2} value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-6">
-             <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Country</label>
-                <input className={MODAL_INPUT} value={formData.country} onChange={e => setFormData({...formData, country: e.target.value})} />
-             </div>
-             <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Date Joined</label>
-                <input type="date" className={MODAL_INPUT} value={formData.createdDate} onChange={e => setFormData({...formData, createdDate: e.target.value})} />
-             </div>
           </div>
 
           <div className="flex justify-end gap-6 pt-6 border-t border-slate-100">
@@ -255,8 +271,7 @@ const ClientProfileModal = ({ client, projectCount, onClose, onEdit }: any) => {
             <div className="space-y-1">
               <h2 className="text-3xl font-black text-slate-900 tracking-tight">{client.name}</h2>
               <div className="flex items-center gap-3">
-                <span className="text-xs font-black text-[#0A69E1] uppercase tracking-widest">{client.companyName}</span>
-                <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+                <span className="text-xs font-black text-[#0A69E1] uppercase tracking-widest">{client.company_name}</span>
                 <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">{projectCount} System Projects</span>
               </div>
             </div>
@@ -265,12 +280,7 @@ const ClientProfileModal = ({ client, projectCount, onClose, onEdit }: any) => {
 
           <div className="grid grid-cols-2 gap-y-8 gap-x-12 p-8 bg-blue-50/20 border border-blue-100 rounded-[32px]">
             <DetailItem label="Communication Hub" value={client.email} subValue={client.phone} />
-            <DetailItem label="Onboarding Date" value={client.createdDate} />
-            <DetailItem label="Region / Country" value={client.country} />
-            <DetailItem label="Total Investments" value={`${projectCount} Active Projects`} />
-            <div className="col-span-2">
-              <DetailItem label="Registered Address" value={client.address || 'No physical address on file'} />
-            </div>
+            <DetailItem label="Onboarding Date" value={client.created_at} />
           </div>
         </div>
       </div>
