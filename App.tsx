@@ -9,7 +9,8 @@ import TaskBoard from './components/TaskBoard';
 import PendingProjectManager from './components/PendingProjectManager';
 import Login from './components/Login';
 import ProjectModal from './components/ProjectModal';
-import { Client, Project, Developer, Notification, Priority, NotificationCategory } from './types';
+import Settings from './components/Settings';
+import { Client, Project, Developer, Notification, Priority, NotificationCategory, User } from './types';
 import { INITIAL_CLIENTS, INITIAL_PROJECTS, INITIAL_DEVELOPERS } from './services/mockData';
 // Removed non-existent downloadCSV import from utils
 import {
@@ -22,12 +23,22 @@ import {
 } from './utils';
 import { ICONS } from './constants';
 
+const DEFAULT_ADMIN: User = {
+  id: 'admin-1',
+  name: 'Administrator',
+  email: 'admin',
+  role: 'Admin',
+  password: 'admin123',
+  createdAt: new Date().toISOString()
+};
+
 const App: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [clients, setClients] = useState<Client[]>(INITIAL_CLIENTS);
   const [projects, setProjects] = useState<Project[]>(INITIAL_PROJECTS);
   const [developers, setDevelopers] = useState<Developer[]>(INITIAL_DEVELOPERS);
+  const [users, setUsers] = useState<User[]>([DEFAULT_ADMIN]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [selectedProjectForDetail, setSelectedProjectForDetail] = useState<Project | null>(null);
   const [showProjectModal, setShowProjectModal] = useState(false);
@@ -37,18 +48,21 @@ const App: React.FC = () => {
     const savedClients = localStorage.getItem('it_clients');
     const savedProjects = localStorage.getItem('it_projects');
     const savedDevs = localStorage.getItem('it_devs');
-    const auth = localStorage.getItem('it_auth');
+    const savedUsers = localStorage.getItem('it_users');
+    const savedAuth = localStorage.getItem('it_auth_user');
 
     if (savedClients) setClients(JSON.parse(savedClients));
     if (savedProjects) setProjects(JSON.parse(savedProjects));
     if (savedDevs) setDevelopers(JSON.parse(savedDevs));
-    if (auth === 'true') setIsAuthenticated(true);
+    if (savedUsers) setUsers(JSON.parse(savedUsers));
+    if (savedAuth) setCurrentUser(JSON.parse(savedAuth));
   }, []);
 
-  const persistData = (newClients: Client[], newProjects: Project[], newDevs: Developer[]) => {
+  const persistData = (newClients: Client[], newProjects: Project[], newDevs: Developer[], newUsers: User[]) => {
     localStorage.setItem('it_clients', JSON.stringify(newClients));
     localStorage.setItem('it_projects', JSON.stringify(newProjects));
     localStorage.setItem('it_devs', JSON.stringify(newDevs));
+    localStorage.setItem('it_users', JSON.stringify(newUsers));
   };
 
   const addNotification = (type: NotificationCategory, subject: string, message: string, projectName: string) => {
@@ -82,13 +96,13 @@ const App: React.FC = () => {
 
     const updated = projects.map(p => p.id === updatedProject.id ? updatedProject : p);
     setProjects(updated);
-    persistData(clients, updated, developers);
+    persistData(clients, updated, developers, users);
   };
 
   const handleCreateProject = (newProject: Project) => {
     const updated = [...projects, newProject];
     setProjects(updated);
-    persistData(clients, updated, developers);
+    persistData(clients, updated, developers, users);
     addNotification('System', 'New Project Created', 'Project has been successfully created.', newProject.name);
   };
 
@@ -124,12 +138,22 @@ const App: React.FC = () => {
     setEditingProject(null);
   };
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    localStorage.removeItem('it_auth');
+  const handleLogin = (creds: { email: string; pass: string }) => {
+    const user = users.find(u => u.email === creds.email && u.password === creds.pass);
+    if (user) {
+      setCurrentUser(user);
+      localStorage.setItem('it_auth_user', JSON.stringify(user));
+    } else {
+      alert('Invalid Credentials');
+    }
   };
 
-  if (!isAuthenticated) return <Login onLogin={(p) => { if (p === 'admin123') setIsAuthenticated(true); else alert('Invalid'); }} />;
+  const handleLogout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('it_auth_user');
+  };
+
+  if (!currentUser) return <Login onLogin={handleLogin} />;
 
   const pendingCount = projects.filter(p => p.status === 'Pending').length;
 
@@ -145,6 +169,24 @@ const App: React.FC = () => {
         <Dashboard projects={projects} clients={clients} notifications={notifications} onAddProject={() => setShowProjectModal(true)} />
       )}
 
+      {activeTab === 'settings' && (
+        <Settings
+          users={users}
+          currentUserEmail={currentUser.email}
+          onAddUser={(newUser) => {
+            const user: User = { ...newUser, id: Date.now().toString(), createdAt: new Date().toISOString() };
+            const updated = [...users, user];
+            setUsers(updated);
+            persistData(clients, projects, developers, updated);
+          }}
+          onDeleteUser={(id) => {
+            const updated = users.filter(u => u.id !== id);
+            setUsers(updated);
+            persistData(clients, projects, developers, updated);
+          }}
+        />
+      )}
+
       {activeTab === 'projects' && (
         <ProjectList
           projects={projects.filter(p => ['Approved', 'Ongoing', 'On Hold'].includes(p.status))}
@@ -155,7 +197,7 @@ const App: React.FC = () => {
           onDelete={(id) => {
             const updated = projects.filter(p => p.id !== id);
             setProjects(updated);
-            persistData(clients, updated, developers);
+            persistData(clients, updated, developers, users);
           }}
           onUpdate={updateProject}
         />
@@ -173,7 +215,7 @@ const App: React.FC = () => {
           onDelete={(id) => {
             const updated = projects.filter(p => p.id !== id);
             setProjects(updated);
-            persistData(clients, updated, developers);
+            persistData(clients, updated, developers, users);
           }}
           onUpdate={updateProject}
         />
@@ -202,17 +244,17 @@ const App: React.FC = () => {
           onAdd={(newClient) => {
             const updated = [...clients, { ...newClient, id: Date.now().toString() }];
             setClients(updated);
-            persistData(updated, projects, developers);
+            persistData(updated, projects, developers, users);
           }}
           onUpdate={(updatedClient) => {
             const updated = clients.map(c => c.id === updatedClient.id ? updatedClient : c);
             setClients(updated);
-            persistData(updated, projects, developers);
+            persistData(updated, projects, developers, users);
           }}
           onDelete={(id) => {
             const updated = clients.filter(c => c.id !== id);
             setClients(updated);
-            persistData(updated, projects, developers);
+            persistData(updated, projects, developers, users);
           }}
         />
       )}
@@ -223,17 +265,17 @@ const App: React.FC = () => {
           onAdd={(d) => {
             const updated = [...developers, { ...d, id: Date.now().toString() }];
             setDevelopers(updated);
-            persistData(clients, projects, updated);
+            persistData(clients, projects, updated, users);
           }}
           onUpdate={(d) => {
             const updated = developers.map(dev => dev.id === d.id ? d : dev);
             setDevelopers(updated);
-            persistData(clients, projects, updated);
+            persistData(clients, projects, updated, users);
           }}
           onDelete={(id) => {
             const updated = developers.filter(dev => dev.id !== id);
             setDevelopers(updated);
-            persistData(clients, projects, updated);
+            persistData(clients, projects, updated, users);
           }}
         />
       )}

@@ -4,7 +4,7 @@ import { Project, Milestone, AdditionalCost, DeveloperAssignment } from './types
 export const formatCurrency = (amount: number, currency: string = 'USD') => {
   const matches = (currency || 'USD').match(/[A-Z]{3}/i);
   const isoCode = (matches ? matches[0] : 'USD').toUpperCase();
-  
+
   try {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -43,7 +43,7 @@ export const calculateProjectProfit = (project: Project) => {
   if (!project) return 0;
   const revenue = calculateGrandTotal(project);
   const devExpenses = calculateDeveloperTotalPayout(project.squad || []);
-  const otherExpenses = calculateTotalAdditionalCosts(project.additionalCosts);
+  const otherExpenses = calculateTotalAdditionalCosts(project.additionalCosts) * 0.2; // Only 20% is actual expense, 80% is profit
   return revenue - (devExpenses + otherExpenses);
 };
 
@@ -91,7 +91,7 @@ export const downloadCSV = (data: any[], filename: string) => {
 
   const headers = Object.keys(data[0]);
   const csvRows = [];
-  
+
   // Header row
   csvRows.push(headers.join(','));
 
@@ -109,7 +109,7 @@ export const downloadCSV = (data: any[], filename: string) => {
   const csvContent = csvRows.join('\n');
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
-  
+
   const link = document.createElement('a');
   link.setAttribute('href', url);
   link.setAttribute('download', `${filename}_${new Date().toISOString().slice(0, 10)}.csv`);

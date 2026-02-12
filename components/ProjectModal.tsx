@@ -2,9 +2,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Client, Developer, Project, ProjectType, ProjectStatus, Priority } from '../types';
 import { ICONS } from '../constants';
-import { 
-  formatCurrency, 
-  getMilestonesByProjectType, 
+import {
+  formatCurrency,
+  getMilestonesByProjectType,
   calculateTotalAdditionalCosts,
   calculateDeveloperTotalPayout,
   getDevPayoutSplits
@@ -65,18 +65,21 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
   }, [initialData, isOpen]);
 
   const financialSummary = useMemo(() => {
-    const revenue = formData.baseProjectAmount || 0;
-    const addCosts = calculateTotalAdditionalCosts(formData.additionalCosts || []);
+    const baseRevenue = formData.baseProjectAmount || 0;
+    const totalAddCosts = calculateTotalAdditionalCosts(formData.additionalCosts || []);
+    const operatingExpense = totalAddCosts * 0.2; // 20% actual cost
+
+    const totalRevenue = baseRevenue + totalAddCosts;
     const devCosts = calculateDeveloperTotalPayout(formData.squad || []);
-    const totalInvestment = addCosts + devCosts;
-    const profit = revenue - totalInvestment;
-    
+    const totalInvestment = operatingExpense + devCosts;
+    const profit = totalRevenue - totalInvestment;
+
     return {
-      revenue,
-      addCosts,
+      revenue: totalRevenue,
+      operatingExpense,
       devCosts,
       profit,
-      profitMargin: revenue > 0 ? (profit / revenue) * 100 : 0
+      profitMargin: totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0
     };
   }, [formData.baseProjectAmount, formData.additionalCosts, formData.squad]);
 
@@ -93,7 +96,7 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-md">
       <div className="bg-white sm:rounded-[40px] w-full max-w-4xl h-full sm:h-auto sm:max-h-[92vh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in-95 duration-300">
-        
+
         <div className="px-6 sm:px-12 py-8 sm:py-10 border-b border-[#F8FAFC] flex items-center justify-between sticky top-0 bg-white z-20">
           <div>
             <h2 className="text-xl sm:text-3xl font-black text-[#0F172A] tracking-tighter">{initialData ? 'Update Deployment' : 'New Project Deployment'}</h2>
@@ -105,11 +108,11 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
         </div>
 
         <form onSubmit={(e) => { e.preventDefault(); onSubmit(formData); }} className="px-6 sm:px-12 py-6 sm:py-10 space-y-6 sm:space-y-10">
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <FinancialWidget label="Estimated Profit" value={formatCurrency(financialSummary.profit, formData.currency)} color="emerald" sub={`${financialSummary.profitMargin.toFixed(1)}% Yield`} />
             <FinancialWidget label="Technical Spend" value={formatCurrency(financialSummary.devCosts, formData.currency)} color="blue" sub={`${formData.squad.length} Engineers`} />
-            <FinancialWidget label="Operating Margin" value={formatCurrency(financialSummary.addCosts, formData.currency)} color="amber" sub="External Costs" />
+            <FinancialWidget label="Operating Expense (20%)" value={formatCurrency(financialSummary.operatingExpense, formData.currency)} color="amber" sub="External Costs" />
           </div>
 
           <div className={SECTION_CONTAINER}>
@@ -117,15 +120,15 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
               <ICONS.Info />
               <h3 className="text-[10px] sm:text-[12px] font-black uppercase tracking-[0.2em]">Project Core</h3>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
               <div className="space-y-1">
                 <label className={LABEL_CLASSES}>Project Title</label>
-                <input required className={INPUT_CLASSES} value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                <input required className={INPUT_CLASSES} value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
               </div>
               <div className="space-y-1">
                 <label className={LABEL_CLASSES}>Lifecycle Status</label>
-                <select className={INPUT_CLASSES} value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
+                <select className={INPUT_CLASSES} value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })}>
                   <option value="Pending">Pending Approval</option>
                   <option value="Approved">Approved</option>
                   <option value="Ongoing">Active Development</option>
@@ -136,14 +139,14 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
               </div>
               <div className="space-y-1">
                 <label className={LABEL_CLASSES}>Client Partner</label>
-                <select required className={INPUT_CLASSES} value={formData.clientId} onChange={e => setFormData({...formData, clientId: e.target.value})}>
+                <select required className={INPUT_CLASSES} value={formData.clientId} onChange={e => setFormData({ ...formData, clientId: e.target.value })}>
                   <option value="">Select Enterprise Client</option>
                   {clients.map(c => <option key={c.id} value={c.id}>{c.companyName}</option>)}
                 </select>
               </div>
               <div className="space-y-1">
                 <label className={LABEL_CLASSES}>Strategic Priority</label>
-                <select className={INPUT_CLASSES} value={formData.priority} onChange={e => setFormData({...formData, priority: e.target.value})}>
+                <select className={INPUT_CLASSES} value={formData.priority} onChange={e => setFormData({ ...formData, priority: e.target.value })}>
                   <option value="Low">Low Priority</option>
                   <option value="Medium">Standard Priority</option>
                   <option value="High">High-Stakes Priority</option>
@@ -151,11 +154,11 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
               </div>
               <div className="space-y-1">
                 <label className={LABEL_CLASSES}>Total Project Cost (USD)</label>
-                <input type="number" className={INPUT_CLASSES} value={formData.baseProjectAmount || ''} onChange={e => setFormData({...formData, baseProjectAmount: parseFloat(e.target.value) || 0})} />
+                <input type="number" className={INPUT_CLASSES} value={formData.baseProjectAmount || ''} onChange={e => setFormData({ ...formData, baseProjectAmount: parseFloat(e.target.value) || 0 })} />
               </div>
               <div className="space-y-1">
                 <label className={LABEL_CLASSES}>Payment Structure</label>
-                <select className={INPUT_CLASSES} value={formData.projectType} onChange={e => setFormData({...formData, projectType: e.target.value})}>
+                <select className={INPUT_CLASSES} value={formData.projectType} onChange={e => setFormData({ ...formData, projectType: e.target.value })}>
                   <option value="40-30-30">Default (40% / 30% / 30%)</option>
                   <option value="Full Payment Upfront">Upfront (100%)</option>
                   <option value="Custom Milestone">Custom Allocation</option>
@@ -170,7 +173,7 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
                 <ICONS.Teams />
                 <h3 className="text-[10px] sm:text-[12px] font-black uppercase tracking-[0.2em]">Engineering Squad (40/60 Split)</h3>
               </div>
-              <button type="button" onClick={() => setFormData({...formData, squad: [...formData.squad, { developerId: '', totalCost: 0, isAdvancePaid: false, isFinalPaid: false }]})} className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">+ Assign Resource</button>
+              <button type="button" onClick={() => setFormData({ ...formData, squad: [...formData.squad, { developerId: '', totalCost: 0, isAdvancePaid: false, isFinalPaid: false }] })} className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">+ Assign Resource</button>
             </div>
 
             <div className="space-y-4">
@@ -193,7 +196,7 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
                       <button type="button" onClick={() => {
                         const newSquad = [...formData.squad];
                         newSquad.splice(idx, 1);
-                        setFormData({...formData, squad: newSquad});
+                        setFormData({ ...formData, squad: newSquad });
                       }} className="p-3 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all h-[52px] flex items-center justify-center">
                         <ICONS.Delete />
                       </button>
@@ -213,6 +216,67 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
                   </div>
                 );
               })}
+            </div>
+          </div>
+
+          <div className={SECTION_CONTAINER}>
+            <div className="flex items-center justify-between mb-4 sm:mb-8">
+              <div className="flex items-center gap-3 text-amber-600">
+                <ICONS.Finances />
+                <h3 className="text-[10px] sm:text-[12px] font-black uppercase tracking-[0.2em]">Additional Operational Costs</h3>
+              </div>
+              <button type="button" onClick={() => setFormData({ ...formData, additionalCosts: [...formData.additionalCosts, { id: Date.now().toString(), name: '', amount: 0, description: '' }] })} className="text-[10px] font-black text-amber-600 uppercase tracking-widest">+ Add Cost Item</button>
+            </div>
+
+            <div className="space-y-4">
+              {formData.additionalCosts.map((cost: any, idx: number) => (
+                <div key={idx} className="p-6 bg-slate-50 rounded-2xl border border-slate-100 space-y-4">
+                  <div className="flex flex-col sm:flex-row gap-4 sm:items-end">
+                    <div className="flex-[2] space-y-1">
+                      <label className={LABEL_CLASSES}>Cost Item Name</label>
+                      <input
+                        required
+                        placeholder="e.g. Server Licensing, Third-party API"
+                        className={INPUT_CLASSES}
+                        value={cost.name}
+                        onChange={e => {
+                          const newCosts = [...formData.additionalCosts];
+                          newCosts[idx] = { ...newCosts[idx], name: e.target.value };
+                          setFormData({ ...formData, additionalCosts: newCosts });
+                        }}
+                      />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <label className={LABEL_CLASSES}>Cost Amount ($)</label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
+                        <input
+                          type="number"
+                          className={`${INPUT_CLASSES} pl-8`}
+                          value={cost.amount || ''}
+                          onChange={e => {
+                            const newCosts = [...formData.additionalCosts];
+                            newCosts[idx] = { ...newCosts[idx], amount: parseFloat(e.target.value) || 0 };
+                            setFormData({ ...formData, additionalCosts: newCosts });
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <button type="button" onClick={() => {
+                      const newCosts = [...formData.additionalCosts];
+                      newCosts.splice(idx, 1);
+                      setFormData({ ...formData, additionalCosts: newCosts });
+                    }} className="p-3 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all h-[52px] flex items-center justify-center">
+                      <ICONS.Delete />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {formData.additionalCosts.length === 0 && (
+                <div className="text-center py-8 border-2 border-dashed border-slate-200 rounded-2xl">
+                  <p className="text-xs font-bold text-slate-400">No additional costs recorded</p>
+                </div>
+              )}
             </div>
           </div>
 

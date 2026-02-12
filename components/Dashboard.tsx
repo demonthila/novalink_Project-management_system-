@@ -1,18 +1,18 @@
 
 import React, { useMemo } from 'react';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer
 } from 'recharts';
 import { Project, Client, Notification } from '../types';
-import { 
-  formatCurrency, 
-  calculateGrandTotal, 
+import {
+  formatCurrency,
+  calculateGrandTotal,
   calculatePaidAmount,
   calculateDeveloperTotalPayout,
   calculateTotalAdditionalCosts,
@@ -43,7 +43,7 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, clients }) => {
       p.squad?.forEach(s => activeContributors.add(s.developerId));
     });
 
-    const netProfit = totalRevenue - (totalDevCosts + totalOtherCosts);
+    const netProfit = totalRevenue - (totalDevCosts + totalOtherCosts * 0.2);
     const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
 
     return {
@@ -104,7 +104,7 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, clients }) => {
       const totalDevCost = calculateDeveloperTotalPayout(p.squad);
       const otherCosts = calculateTotalAdditionalCosts(p.additionalCosts);
       const profit = calculateGrandTotal(p) - (totalDevCost + otherCosts);
-      
+
       return {
         'Project ID': p.id,
         'Project Name': p.name,
@@ -129,10 +129,10 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, clients }) => {
     <div className="space-y-6 sm:space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 w-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-[32px] font-black text-[#0F172A] tracking-tighter">Strategic Intelligence</h1>
+          <h1 className="text-2xl sm:text-[32px] font-black text-[#0F172A] tracking-tighter">Main Dashboard</h1>
           <p className="text-[#64748B] text-sm sm:text-base mt-1 font-medium italic">Enterprise-grade financial and operational overview.</p>
         </div>
-        <button 
+        <button
           onClick={handleMasterExport}
           className="flex items-center justify-center h-[60px] px-10 bg-[#2563EB] text-white rounded-[20px] text-[13px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 active:scale-95 transition-all"
         >
@@ -142,19 +142,19 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, clients }) => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-        <KPICard 
+        <KPICard
           label="Total Revenue"
           value={formatCurrency(metrics.totalRevenue)}
           growth={`Total Pot: ${formatCurrency(metrics.totalPotential)}`}
           footer={<div className="h-1.5 w-full bg-[#E2E8F0] rounded-full overflow-hidden mt-6"><div className="h-full bg-[#2563EB]" style={{ width: '72%' }} /></div>}
         />
-        <KPICard 
+        <KPICard
           label="Operational Expense"
           value={formatCurrency(metrics.totalDevCosts + metrics.totalOtherCosts)}
           subValue={`${metrics.contributorsCount} engineers assigned`}
           icon={<ICONS.Teams />}
         />
-        <KPICard 
+        <KPICard
           label="Net Profit"
           value={formatCurrency(metrics.netProfit)}
           valueColor="text-[#2563EB]"
@@ -213,9 +213,8 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, clients }) => {
                       <p className="text-[10px] font-medium text-[#94A3B8] mt-0.5">{trx.category}</p>
                     </td>
                     <td className="px-6 sm:px-10 py-6">
-                      <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black tracking-widest uppercase ${
-                        trx.type === 'INCOME' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
-                      }`}>
+                      <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black tracking-widest uppercase ${trx.type === 'INCOME' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
+                        }`}>
                         {trx.type}
                       </span>
                     </td>

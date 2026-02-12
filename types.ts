@@ -73,21 +73,21 @@ export interface Project {
   startDate: string;
   endDate: string;
   status: ProjectStatus;
-  
+
   // Financials
   currency: string;
   baseProjectAmount: number;
   milestones: Milestone[];
   additionalCosts: AdditionalCost[];
   isInvoiceIssued: boolean;
-  
+
   // Team
   squad: DeveloperAssignment[];
   developerTotalCost: number;
-  
+
   // Added tasks property to fix missing property error in mockData.ts and Project interface
   tasks: ProjectTask[];
-  
+
   notes: string;
   invoiceNumber?: string;
 }
@@ -103,4 +103,13 @@ export interface Notification {
   projectName: string;
   isRead: boolean;
   isResolved: boolean;
+}
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: 'Admin' | 'User';
+  password: string; // In a real app, this should be hashed.
+  createdAt: string;
 }
