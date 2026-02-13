@@ -7,7 +7,13 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer // Fixed import
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
+  Legend
 } from 'recharts';
 import { Project, Client, Notification } from '../types';
 import {
@@ -28,34 +34,48 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ projects, clients, notifications, onAddProject }) => {
-  const [metrics, setMetrics] = useState({
-    totalPotential: 0,
+  const [metrics, setMetrics] = useState<any>({
     totalRevenue: 0,
     totalExpenses: 0,
-    netProfit: 0,
-    profitMargin: 0,
-    contributorsCount: 0,
-    currency: 'AUD'
+    totalProfit: 0,
+    totalDevCost: 0,
+    totalAddCost: 0,
+    totalProjects: 0,
+    totalPaymentsReceived: 0,
+    totalPendingPayments: 0,
+    overdueUnpaidTotal: 0,
+    overdueUnpaidCount: 0,
+    currency: 'USD'
   });
 
   const [loading, setLoading] = useState(true);
+  const [revenueVsExpenses, setRevenueVsExpenses] = useState<any[]>([]);
+  const [monthlyData, setMonthlyData] = useState<any[]>([]);
+  const [statusDistribution, setStatusDistribution] = useState<any>({});
 
-  // Fetch metrics from backend
   const fetchDashboard = async () => {
     try {
       const res = await fetch('/api/dashboard.php');
       const data = await res.json();
       setMetrics({
-        totalPotential: data.totalPotential || 0,
         totalRevenue: data.totalRevenue || 0,
         totalExpenses: data.totalExpenses || 0,
-        netProfit: data.netProfit || 0,
-        profitMargin: data.profitMargin || 0,
-        contributorsCount: data.activeContributors || 0,
+        totalProfit: data.totalProfit || 0,
+        totalDevCost: data.totalDevCost || 0,
+        totalAddCost: data.totalAddCost || 0,
+        totalProjects: data.totalProjects || 0,
+        totalPaymentsReceived: data.totalPaymentsReceived || 0,
+        totalPendingPayments: data.totalPendingPayments || 0,
+        overdueUnpaidTotal: data.overdueUnpaidTotal || 0,
+        overdueUnpaidCount: data.overdueUnpaidCount || 0,
         currency: data.currency || 'USD'
       });
+
+      setRevenueVsExpenses(Array.isArray(data.revenueVsExpenses) ? data.revenueVsExpenses : []);
+      setMonthlyData(Array.isArray(data.monthly) ? data.monthly.map((m: any) => ({ name: m.label, revenue: m.revenue, expenses: m.expenses, profit: m.profit })) : []);
+      setStatusDistribution(data.statusDistribution || {});
     } catch (error) {
-      console.error("Failed to fetch dashboard metrics:", error);
+      console.error('Failed to fetch dashboard metrics:', error);
     } finally {
       setLoading(false);
     }
@@ -68,51 +88,17 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, clients, notifications,
     return () => window.removeEventListener('stratis-currency-change', handleCurrencyChange);
   }, []);
 
-  // Transactions Logic
   const transactions = useMemo(() => {
     const list: any[] = [];
-    projects.forEach(p => {
-      // Income from paid payments
+    projects.forEach((p) => {
       p.payments?.forEach((m) => {
         if (m.status === 'Paid') {
-          list.push({
-            id: `TRX-IN-${m.id}`,
-            projectName: p.name,
-            type: 'INCOME',
-            category: `Payment ${m.payment_number}`,
-            amount: m.amount,
-            date: m.paid_date || p.start_date,
-          });
+          list.push({ id: `TRX-IN-${m.id}`, projectName: p.name, type: 'INCOME', category: `Payment ${m.payment_number || ''}`, amount: m.amount, date: m.paid_date || p.start_date });
         }
       });
-      // Expenses (Mocked as 60% of dev cost at start, 40% at end? or just flat)
-      // Since we don't track dev payments status, let's just show Project Start expense
-      if (p.developers && p.developers.length > 0) {
-        const totalDevCost = calculateDeveloperTotalPayout(p.developers);
-        // Assume 40% advance paid on start
-        list.push({
-          id: `TRX-OUT-${p.id}-Start`,
-          projectName: p.name,
-          type: 'EXPENSE',
-          category: 'Dev Advance',
-          amount: totalDevCost * 0.4,
-          date: p.start_date
-        });
-      }
     });
-
-    return list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5);
+    return list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 6);
   }, [projects]);
-
-  // Mock Chart Data
-  const chartData = [
-    { name: 'MAY', revenue: 32000, expenses: 14000 },
-    { name: 'JUN', revenue: 28000, expenses: 16000 },
-    { name: 'JUL', revenue: 35000, expenses: 18000 },
-    { name: 'AUG', revenue: 42000, expenses: 20000 },
-    { name: 'SEP', revenue: 31000, expenses: 17000 },
-    { name: 'OCT', revenue: 45000, expenses: 15000 },
-  ];
 
   const handleMasterExport = () => {
     const exportData = projects.map(p => {
@@ -140,6 +126,10 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, clients, notifications,
     downloadCSV(exportData, 'Stratis_Project_Report');
   };
 
+  const chartData = revenueVsExpenses.map(r => ({ name: r.name || r.project_name || `#${r.id}`, revenue: Number(r.revenue || 0), expenses: Number(r.expenses || 0) }));
+
+  const pieData = Object.entries(statusDistribution).map(([k, v]) => ({ name: k, value: v }));
+
   return (
     <div className="space-y-6 sm:space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 w-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -156,76 +146,61 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, clients, notifications,
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-        <KPICard
-          label="Total Revenue"
-          value={formatCurrency(metrics.totalRevenue, metrics.currency)}
-          growth={`Total Pot: ${formatCurrency(metrics.totalPotential, metrics.currency)}`}
-          footer={<div className="h-1.5 w-full bg-[#E2E8F0] rounded-full overflow-hidden mt-6"><div className="h-full bg-[#2563EB]" style={{ width: '72%' }} /></div>}
-        />
-        <KPICard
-          label="Operational Expense"
-          value={formatCurrency(metrics.totalExpenses, metrics.currency)}
-          subValue={`${metrics.contributorsCount} engineers assigned`}
-          icon={<ICONS.Teams />}
-        />
-        <KPICard
-          label="Net Profit"
-          value={formatCurrency(metrics.netProfit, metrics.currency)}
-          valueColor="text-[#2563EB]"
-          growth={`↗ ${metrics.profitMargin.toFixed(1)}% Margin`}
-          growthColor="text-[#10B981]"
-        />
-      </div>
-
-      {/* Notifications Section */}
-      <div className="bg-white p-6 sm:p-10 rounded-[24px] sm:rounded-[40px] border border-[#F1F5F9] shadow-sm overflow-hidden">
-        <h3 className="text-lg font-black text-[#0F172A] uppercase tracking-widest mb-6">Important Notifications</h3>
-        <div className="space-y-4">
-          {notifications.length > 0 ? (
-            notifications.slice(0, 5).map(note => (
-              <div key={note.id} className="p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded-r-xl flex items-start gap-4">
-                <div className="p-2 bg-yellow-100 rounded-full text-yellow-600">
-                  <ICONS.Info />
-                </div>
-                <div>
-                  <h4 className="font-bold text-[#0F172A]">{note.type}</h4>
-                  <p className="text-sm text-slate-600 mt-1">{note.message}</p>
-                  <span className="text-xs text-slate-400 mt-2 block">{new Date(note.sent_at).toLocaleDateString()}</span>
-                </div>
-              </div>
-            ))
-          ) : (
-            <p className="text-slate-400 italic">No new notifications.</p>
-          )}
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 sm:gap-6">
+        <KPICard label="Total Profit" value={formatCurrency(metrics.totalProfit, metrics.currency)} valueColor={metrics.totalProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'} />
+        <KPICard label="Active Projects" value={String(metrics.totalProjects && statusDistribution['Active'] ? statusDistribution['Active'] : (metrics.totalProjects || 0))} />
+        <KPICard label="Completed Projects" value={String(statusDistribution['Completed'] || 0)} />
+        <KPICard label="Total Revenue" value={formatCurrency(metrics.totalRevenue, metrics.currency)} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-10">
         <div className="bg-white p-6 sm:p-10 rounded-[24px] sm:rounded-[40px] border border-[#F1F5F9] shadow-sm overflow-hidden">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
-            <h3 className="text-lg font-black text-[#0F172A] uppercase tracking-widest">Financial Velocity</h3>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-[#2563EB]" />
-                <span className="text-[10px] font-black text-[#64748B] uppercase tracking-widest">Income</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-[#F43F5E]" />
-                <span className="text-[10px] font-black text-[#64748B] uppercase tracking-widest">Burn</span>
-              </div>
-            </div>
+            <h3 className="text-lg font-black text-[#0F172A] uppercase tracking-widest">Revenue vs Expenses (Recent)</h3>
           </div>
-          <div className="h-[300px] w-full">
+          <div className="h-[320px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
+              <BarChart data={chartData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
                 <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#F1F5F9" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 700 }} dy={10} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 700 }} tickFormatter={(value) => `${value / 1000}k`} />
-                <Tooltip cursor={{ fill: '#F8FAFC' }} contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.15)' }} />
-                <Bar dataKey="revenue" fill="#2563EB" radius={[6, 6, 0, 0]} barSize={24} />
-                <Bar dataKey="expenses" fill="#F43F5E" radius={[6, 6, 0, 0]} barSize={24} />
+                <Tooltip cursor={{ fill: '#F8FAFC' }} contentStyle={{ borderRadius: '16px', border: 'none' }} />
+                <Bar dataKey="revenue" fill="#2563EB" radius={[6, 6, 0, 0]} barSize={18} />
+                <Bar dataKey="expenses" fill="#F43F5E" radius={[6, 6, 0, 0]} barSize={18} />
               </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 sm:p-10 rounded-[24px] sm:rounded-[40px] border border-[#F1F5F9] shadow-sm">
+          <h3 className="text-lg font-black text-[#0F172A] uppercase tracking-widest mb-6">Project Status Distribution</h3>
+          <div className="h-[320px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="45%" outerRadius={90} innerRadius={40} label>
+                  {pieData.map((_, i) => (
+                    <Cell key={i} fill={["#2563EB","#10B981","#F59E0B","#F43F5E"][i % 4]} />
+                  ))}
+                </Pie>
+                <Legend verticalAlign="bottom" />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-10">
+        <div className="bg-white p-6 sm:p-10 rounded-[24px] sm:rounded-[40px] border border-[#F1F5F9] shadow-sm">
+          <h3 className="text-lg font-black text-[#0F172A] uppercase tracking-widest mb-6">Monthly Profit Growth</h3>
+          <div className="h-[260px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={monthlyData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
+                <XAxis dataKey="name" tick={{ fill: '#94A3B8' }} />
+                <YAxis tickFormatter={(v)=> (v>=1000? (v/1000)+'k': v)} tick={{ fill: '#94A3B8' }} />
+                <Tooltip />
+                <Line type="monotone" dataKey="profit" stroke="#10B981" strokeWidth={3} dot={{ r: 3 }} />
+              </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
@@ -251,8 +226,7 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, clients, notifications,
                       <p className="text-[10px] font-medium text-[#94A3B8] mt-0.5">{trx.category}</p>
                     </td>
                     <td className="px-6 sm:px-10 py-6">
-                      <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black tracking-widest uppercase ${trx.type === 'INCOME' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
-                        }`}>
+                      <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black tracking-widest uppercase ${trx.type === 'INCOME' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
                         {trx.type}
                       </span>
                     </td>
@@ -271,14 +245,14 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, clients, notifications,
 };
 
 const KPICard = ({ label, value, valueColor = "text-[#0F172A]", growth, growthColor = "text-[#10B981]", subValue, icon, footer }: any) => (
-  <div className="bg-white p-6 sm:p-10 rounded-[24px] sm:rounded-[40px] border border-[#F1F5F9] shadow-sm flex flex-col justify-between hover:border-blue-100 transition-all duration-500 group">
+  <div className="bg-white p-6 sm:p-8 rounded-[16px] sm:rounded-[20px] border border-[#F1F5F9] shadow-sm flex flex-col justify-between hover:border-blue-100 transition-all duration-500 group">
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <p className="text-[11px] font-black text-[#94A3B8] uppercase tracking-[0.2em] group-hover:text-[#2563EB] transition-colors">{label}</p>
         {icon && <div className="text-[#94A3B8] group-hover:scale-110 transition-transform duration-500">{icon}</div>}
       </div>
       <div className="space-y-2">
-        <p className={`text-2xl sm:text-4xl font-black ${valueColor} tracking-tighter leading-none`}>{value}</p>
+        <p className={`text-2xl sm:text-3xl font-black ${valueColor} tracking-tighter leading-none`}>{value}</p>
         {growth && <span className={`text-[11px] font-black ${growthColor} uppercase tracking-widest`}>{growth}</span>}
         {subValue && <p className="text-xs font-bold text-[#94A3B8] italic">{subValue}</p>}
       </div>
