@@ -40,7 +40,7 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
     if (initialData) {
       // Map initial data to form.
       // initialData comes from API (snake_case)
-      setFormData({
+        setFormData({
         id: initialData.id,
         name: initialData.name,
         client_id: initialData.client_id,
@@ -49,7 +49,8 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
         start_date: initialData.start_date || new Date().toISOString().split('T')[0],
         end_date: initialData.end_date || '',
         total_revenue: initialData.total_revenue || 0,
-        developers: (initialData.developers || []).map(d => ({ id: d.id, cost: d.cost })), // Map to flat structure for form if needed
+        developers: (initialData.developers || []).map(d => ({ id: d.id, cost: d.cost, is_advance_paid: !!d.is_advance_paid, is_final_paid: !!d.is_final_paid })), // Map to flat structure for form if needed
+        payments: initialData.payments || [],
         additional_costs: initialData.additional_costs || [],
         notes: initialData.notes || ''
       });
@@ -63,6 +64,7 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
         end_date: '',
         total_revenue: 0,
         developers: [],
+        payments: [],
         additional_costs: [],
         notes: ''
       });
@@ -101,13 +103,29 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
   };
 
   const handleAddDeveloper = () => {
-    setFormData({ ...formData, developers: [...formData.developers, { id: '', cost: 0 }] });
+    setFormData({ ...formData, developers: [...formData.developers, { id: '', cost: 0, is_advance_paid: false, is_final_paid: false }] });
   };
 
   const handleRemoveDeveloper = (index: number) => {
     const newDevs = [...formData.developers];
     newDevs.splice(index, 1);
     setFormData({ ...formData, developers: newDevs });
+  };
+
+  const handleSubmit = () => {
+    // If user attempts to mark Completed, verify payments first
+    if (String(formData.status) === 'Completed') {
+      const payments = formData.payments || [];
+      const allPaid = payments.length >= 3 && payments.every((p: any) => String((p.status || '')).toLowerCase() === 'paid');
+      if (!allPaid) {
+        alert('⚠ Please collect all remaining payments before completing this project.');
+        return;
+      }
+
+      if (!confirm('Are you sure you want to mark this project as Completed?')) return;
+    }
+
+    onSubmit(formData);
   };
 
   return (
@@ -126,7 +144,7 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
           </button>
         </div>
 
-        <form onSubmit={(e) => { e.preventDefault(); onSubmit(formData); }} className="px-6 sm:px-12 py-6 sm:py-10 space-y-6 sm:space-y-10">
+        <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="px-6 sm:px-12 py-6 sm:py-10 space-y-6 sm:space-y-10">
 
           {/* Financial Summary */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -224,6 +242,22 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
                   <div className="flex-1 space-y-1">
                     <label className={LABEL_CLASSES}>Cost for Project</label>
                     <input type="number" className={INPUT_CLASSES} value={dev.cost || ''} onChange={e => handleUpdateDeveloper(idx, 'cost', parseFloat(e.target.value) || 0)} />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <label className={LABEL_CLASSES}>Developer Payments</label>
+                    <div className="flex items-center gap-3">
+                      <label className="flex items-center gap-2 text-sm">
+                        <input type="checkbox" checked={!!dev.is_advance_paid} onChange={e => handleUpdateDeveloper(idx, 'is_advance_paid', e.target.checked)} />
+                        <span className="text-xs">Advance (40%)</span>
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input type="checkbox" checked={!!dev.is_final_paid} onChange={e => handleUpdateDeveloper(idx, 'is_final_paid', e.target.checked)} />
+                        <span className="text-xs">Final (60%)</span>
+                      </label>
+                      <div className="ml-auto text-xs font-bold text-slate-600">
+                        {formatCurrency(((dev.is_advance_paid ? dev.cost * 0.4 : 0) + (dev.is_final_paid ? dev.cost * 0.6 : 0)) || 0, formData.currency)} paid
+                      </div>
+                    </div>
                   </div>
                   <button type="button" onClick={() => handleRemoveDeveloper(idx)} className="p-3 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all h-[52px] flex items-center justify-center">
                     <ICONS.Delete />

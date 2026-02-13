@@ -26,7 +26,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, onLo
         { id: 'archived', name: 'Archived' },
       ]
     },
-    { id: 'tasks', name: 'Mission Control', icon: <ICONS.Reports /> },
+    // Mission Control (task board) removed
     { id: 'clients', name: 'Clients', icon: <ICONS.Clients /> },
     { id: 'teams', name: 'Teams', icon: <ICONS.Teams /> },
   ];

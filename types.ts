@@ -4,7 +4,6 @@ export interface Developer {
   id: number;
   name: string;
   role: string;
-  hourly_rate: number;
   email: string;
   status: 'Active' | 'Inactive';
   created_at?: string;

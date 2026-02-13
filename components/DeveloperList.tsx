@@ -46,7 +46,8 @@ const DeveloperList: React.FC<DeveloperListProps> = ({ developers, onAdd, onUpda
           body: JSON.stringify(data)
         });
       } else {
-        res = await fetch(`/api/developers.php`, {
+        // Use new onboarding endpoint for creating developers
+        res = await fetch(`/api/add_developer.php`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
@@ -102,7 +103,7 @@ const DeveloperList: React.FC<DeveloperListProps> = ({ developers, onAdd, onUpda
               <th className="px-8 py-5">Talent Profile</th>
               <th className="px-8 py-5">Role</th>
               <th className="px-8 py-5">Status</th>
-              <th className="px-8 py-5">Hourly Rate</th>
+              {/* Hourly Rate column removed */}
               <th className="px-8 py-5 text-right">Actions</th>
             </tr>
           </thead>
@@ -136,9 +137,7 @@ const DeveloperList: React.FC<DeveloperListProps> = ({ developers, onAdd, onUpda
                     {d.status}
                   </span>
                 </td>
-                <td className="px-8 py-6 text-sm font-bold text-slate-600">
-                  ${d.hourly_rate}/hr
-                </td>
+                {/* Hourly rate removed */}
                 <td className="px-8 py-6 text-right">
                   <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onClick={() => handleOpenEdit(d)} className="p-2 text-slate-400 hover:text-[#0A69E1] hover:bg-blue-50 rounded-lg transition-colors"><ICONS.Edit /></button>
@@ -174,13 +173,16 @@ const DeveloperList: React.FC<DeveloperListProps> = ({ developers, onAdd, onUpda
   );
 };
 
-const DeveloperModal = ({ isOpen, onClose, onSubmit, initialData }: any) => {
+  const DeveloperModal = ({ isOpen, onClose, onSubmit, initialData }: any) => {
   const [formData, setFormData] = useState(initialData || {
-    name: '',
-    role: '',
-    email: '',
-    status: 'Active',
-    hourly_rate: 0
+    full_name: '',
+    id_card_number: '',
+    address: '',
+    personal_email: '',
+    company_email: '',
+    slack: '',
+    skills: '',
+    comments: ''
   });
 
   return (
@@ -194,31 +196,52 @@ const DeveloperModal = ({ isOpen, onClose, onSubmit, initialData }: any) => {
         </div>
 
         <form onSubmit={e => { e.preventDefault(); onSubmit(formData); }} className="space-y-6">
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-1.5">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Full Legal Name</label>
-              <input required placeholder="Full name" className={MODAL_INPUT} value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+              <input required placeholder="Full name" className={MODAL_INPUT} name="full_name" value={formData.full_name} onChange={e => setFormData({ ...formData, full_name: e.target.value })} />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Role</label>
-              <input placeholder="e.g. Backend Lead" required className={MODAL_INPUT} value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })} />
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ID Card Number</label>
+              <input required placeholder="ID Card Number" className={MODAL_INPUT} name="id_card_number" value={formData.id_card_number} onChange={e => setFormData({ ...formData, id_card_number: e.target.value })} />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Email</label>
-              <input type="email" required className={MODAL_INPUT} value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Personal Email</label>
+              <input type="email" placeholder="Personal Email" className={MODAL_INPUT} name="personal_email" value={formData.personal_email} onChange={e => setFormData({ ...formData, personal_email: e.target.value })} />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Hourly Rate ($)</label>
-              <input type="number" required className={MODAL_INPUT} value={formData.hourly_rate} onChange={e => setFormData({ ...formData, hourly_rate: parseFloat(e.target.value) })} />
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Company Email</label>
+              <input type="email" required placeholder="Company Email" className={MODAL_INPUT} name="company_email" value={formData.company_email} onChange={e => setFormData({ ...formData, company_email: e.target.value })} />
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tech Slack Username</label>
+              <input placeholder="Slack username" className={MODAL_INPUT} name="slack" value={formData.slack} onChange={e => setFormData({ ...formData, slack: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Skills (comma separated)</label>
+              <input placeholder="e.g. React, PHP" className={MODAL_INPUT} name="skills" value={formData.skills} onChange={e => setFormData({ ...formData, skills: e.target.value })} />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Address</label>
+            <textarea placeholder="Address" className={MODAL_INPUT} rows={3} name="address" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">More Comments</label>
+            <textarea placeholder="More comments" className={MODAL_INPUT} rows={3} name="comments" value={formData.comments} onChange={e => setFormData({ ...formData, comments: e.target.value })} />
           </div>
 
           <div className="flex justify-end gap-6 pt-6 border-t border-slate-100">
             <button type="button" onClick={onClose} className="px-8 py-4 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:text-[#0A69E1] transition-colors">Discard</button>
-            <button type="submit" className="h-[60px] px-10 bg-[#2563EB] text-white rounded-[20px] text-[13px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/25 hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center">Save Profile</button>
+            <button type="submit" className="h-[60px] px-10 bg-[#2563EB] text-white rounded-[20px] text-[13px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/25 hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center">Save Developer</button>
           </div>
         </form>
       </div>
@@ -251,9 +274,8 @@ const DeveloperProfileModal = ({ dev, onClose, onEdit }: any) => {
             <button onClick={onEdit} className="h-[52px] px-6 bg-blue-50 border border-blue-100 rounded-xl font-bold text-[#0A69E1] text-sm hover:bg-blue-100 transition-colors flex items-center gap-2"><ICONS.Edit /> Edit Profile</button>
           </div>
 
-          <div className="grid grid-cols-2 gap-y-8 gap-x-12 p-8 bg-blue-50/20 border border-blue-100 rounded-[32px]">
+            <div className="grid grid-cols-2 gap-y-8 gap-x-12 p-8 bg-blue-50/20 border border-blue-100 rounded-[32px]">
             <DetailItem label="Email" value={dev.email} />
-            <DetailItem label="Hourly Rate" value={dev.hourly_rate ? '$' + dev.hourly_rate : 'N/A'} />
             <DetailItem label="Joined" value={dev.created_at} />
           </div>
         </div>

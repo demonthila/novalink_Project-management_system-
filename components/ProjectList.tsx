@@ -1,6 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Project, Client, Developer } from '../types';
+import { fetchProject } from '../services/api';
 import { ICONS } from '../constants';
 import { formatCurrency, calculateGrandTotal } from '../utils';
 
@@ -35,6 +36,31 @@ const ProjectList: React.FC<ProjectListProps> = ({
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     clients.find(c => c.id === p.client_id)?.company_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Local cache for fetched project details (payments, developers)
+  const [detailsMap, setDetailsMap] = useState<Record<number, any>>({});
+  const [loadingMap, setLoadingMap] = useState<Record<number, boolean>>({});
+
+  const loadDetails = async (projectId: number) => {
+    if (detailsMap[projectId] || loadingMap[projectId]) return;
+    setLoadingMap(prev => ({ ...prev, [projectId]: true }));
+    try {
+      const detail = await fetchProject(projectId);
+      setDetailsMap(prev => ({ ...prev, [projectId]: detail }));
+    } catch (err) {
+      console.error('Failed to load project detail', err);
+    } finally {
+      setLoadingMap(prev => ({ ...prev, [projectId]: false }));
+    }
+  };
+
+  // Auto-load details for visible/filtered projects to avoid manual Load button
+  useEffect(() => {
+    filtered.forEach(p => {
+      if (p && p.id) loadDetails(p.id);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered]);
 
   const handleRestore = (project: Project) => {
     onUpdate({ ...project, status: 'Active' });
@@ -88,6 +114,8 @@ const ProjectList: React.FC<ProjectListProps> = ({
                 <th className="px-6 sm:px-8 py-5">PROJECT NAME</th>
                 <th className="px-6 sm:px-8 py-5">CLIENT NAME</th>
                 <th className="px-6 sm:px-8 py-5">SQUAD</th>
+                <th className="px-6 sm:px-8 py-5">SQUAD DEVELOPERS</th>
+                <th className="px-6 sm:px-8 py-5">PAYMENTS</th>
                 <th className="px-6 sm:px-8 py-5">TOTAL REVENUE</th>
                 <th className="px-6 sm:px-8 py-5">STATUS</th>
                 <th className="px-6 sm:px-8 py-5 text-right">ACTIONS</th>
@@ -121,17 +149,47 @@ const ProjectList: React.FC<ProjectListProps> = ({
                       </td>
                       <td className="px-6 sm:px-8 py-5">
                         <div className="flex items-center -space-x-1.5">
-                          {(p.developers || []).slice(0, 3).map((d) => (
+                          {((detailsMap[p.id]?.developers) || (p.developers || []) ).slice(0, 3).map((d: any) => (
                             <div key={d.id} className="w-7 h-7 rounded-full bg-[#0F172A] border-2 border-white flex items-center justify-center text-white text-[9px] font-black" title={d.name}>
-                              {d.name.split(' ').map((n: string) => n[0]).join('')}
+                              {d.name ? d.name.split(' ').map((n: string) => n[0]).join('') : 'D'}
                             </div>
                           ))}
-                          {(p.developers || []).length > 3 && (
+                          {(((detailsMap[p.id]?.developers) || (p.developers || [])).length) > 3 && (
                             <div className="w-7 h-7 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-slate-500 text-[9px] font-bold">
-                              +{(p.developers || []).length - 3}
+                              +{(((detailsMap[p.id]?.developers) || (p.developers || [])).length) - 3}
                             </div>
                           )}
                         </div>
+                      </td>
+
+                      {/* Squad Developers (names) */}
+                      <td className="px-6 sm:px-8 py-5 text-sm text-[#475569]">
+                        {detailsMap[p.id]?.developers ? (
+                          (detailsMap[p.id].developers || []).map((d: any) => d.name).join(', ') || '—'
+                        ) : (
+                          (p.developers || []).length > 0 ? (p.developers || []).map((d: any) => d.name).join(', ') : (
+                            loadingMap[p.id] ? 'Loading...' : '—'
+                          )
+                        )}
+                      </td>
+
+                      {/* Payments brief status */}
+                      <td className="px-6 sm:px-8 py-5 text-sm text-[#475569]">
+                        {detailsMap[p.id]?.payments ? (
+                          (() => {
+                            const payments = detailsMap[p.id].payments || [];
+                            const totalDue = payments.reduce((s: number, m: any) => s + (Number(m.amount) || 0), 0);
+                            const paid = payments.filter((m: any) => String(m.status).toLowerCase() === 'paid');
+                            const totalPaid = paid.reduce((s: number, m: any) => s + (Number(m.amount) || 0), 0);
+                            const pct = totalDue > 0 ? Math.round((totalPaid / totalDue) * 100) : 0;
+                            return (<div className="flex items-center justify-between gap-4">
+                              <div className="text-sm font-bold">{paid.length}/{payments.length} paid</div>
+                              <div className="text-xs text-slate-500">{pct}%</div>
+                            </div>);
+                          })()
+                        ) : (
+                          loadingMap[p.id] ? 'Loading...' : '—'
+                        )}
                       </td>
                       <td className="px-6 sm:px-8 py-5 text-sm font-black text-[#0F172A]">
                         {formatCurrency(calculateGrandTotal(p), p.currency)}
@@ -155,8 +213,24 @@ const ProjectList: React.FC<ProjectListProps> = ({
                               <ICONS.Restore />
                             </button>
                           )}
-                          <button onClick={() => onView(p)} className="p-2 text-slate-400 hover:text-blue-600 transition-colors" title="View Details"><ICONS.Check /></button>
-                          <button onClick={() => onEdit(p)} className="p-2 text-slate-400 hover:text-amber-600 transition-colors" title="Edit Deployment"><ICONS.Edit /></button>
+                          <button onClick={async () => {
+                            try {
+                              const detail = await fetchProject(Number(p.id));
+                              onView(detail);
+                            } catch (err) {
+                              console.error('Failed to fetch project detail', err);
+                              onView(p); // fallback to list item
+                            }
+                          }} className="p-2 text-slate-400 hover:text-blue-600 transition-colors" title="View Details"><ICONS.Check /></button>
+                          <button onClick={async () => {
+                            try {
+                              const detail = await fetchProject(Number(p.id));
+                              onEdit(detail);
+                            } catch (err) {
+                              console.error('Failed to fetch project detail for edit', err);
+                              onEdit(p);
+                            }
+                          }} className="p-2 text-slate-400 hover:text-amber-600 transition-colors" title="Edit Deployment"><ICONS.Edit /></button>
                           <button onClick={() => onDelete(p.id)} className="p-2 text-slate-400 hover:text-rose-600 transition-colors" title="Delete Permanent"><ICONS.Delete /></button>
                         </div>
                       </td>

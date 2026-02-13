@@ -42,7 +42,6 @@ CREATE TABLE IF NOT EXISTS `developers` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(100) NOT NULL,
   `role` varchar(100) NOT NULL,
-  `hourly_rate` decimal(10,2) DEFAULT 0.00,
   `email` varchar(100),
   `status` enum('Active','Inactive') DEFAULT 'Active',
   `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,

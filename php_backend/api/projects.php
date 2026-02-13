@@ -3,6 +3,22 @@
 session_start();
 require_once 'config.php';
 
+// Ensure project_developers has payment flag columns (idempotent)
+try {
+    $colStmt = $pdo->prepare("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = :db AND TABLE_NAME = 'project_developers' AND COLUMN_NAME = :col");
+    $cols = ['is_advance_paid', 'is_final_paid'];
+    foreach ($cols as $col) {
+        $colStmt->execute([':db' => DB_NAME, ':col' => $col]);
+        $exists = (int)$colStmt->fetchColumn() > 0;
+        if (!$exists) {
+            // Add column safely
+            $pdo->exec("ALTER TABLE project_developers ADD COLUMN `" . $col . "` TINYINT(1) DEFAULT 0");
+        }
+    }
+} catch (Exception $e) {
+    // Non-fatal: if this fails, subsequent queries may error — leave handling to callers
+}
+
 $method = $_SERVER['REQUEST_METHOD'];
 $id = isset($_GET['id']) ? intval($_GET['id']) : null;
 
@@ -81,12 +97,18 @@ elseif ($method === 'POST') {
 
         // 2. Insert Developers & Calculate Dev Costs
         $totalDevCost = 0;
+        $totalDevPaid = 0;
         if (!empty($data['developers'])) {
-            $dStmt = $pdo->prepare("INSERT INTO project_developers (project_id, developer_id, cost) VALUES (?, ?, ?)");
+            $dStmt = $pdo->prepare("INSERT INTO project_developers (project_id, developer_id, cost, is_advance_paid, is_final_paid) VALUES (?, ?, ?, ?, ?)");
             foreach ($data['developers'] as $dev) {
                 $cost = (float)$dev['cost'];
-                $dStmt->execute([$projectId, $dev['id'], $cost]);
+                $devId = isset($dev['id']) ? intval($dev['id']) : 0;
+                $isAdvance = !empty($dev['is_advance_paid']) ? 1 : 0;
+                $isFinal = !empty($dev['is_final_paid']) ? 1 : 0;
+                $dStmt->execute([$projectId, $devId, $cost, $isAdvance, $isFinal]);
                 $totalDevCost += $cost;
+                // paid amount for this developer (40% advance, 60% final)
+                $totalDevPaid += ($isAdvance ? $cost * 0.4 : 0) + ($isFinal ? $cost * 0.6 : 0);
             }
         }
 
@@ -101,8 +123,8 @@ elseif ($method === 'POST') {
             }
         }
 
-        // 4. Update Profit
-        $profit = calculateProfit($revenue, $totalDevCost, $totalAddCost);
+        // 4. Update Profit (based on payments made to developers)
+        $profit = calculateProfit($revenue, $totalDevPaid, $totalAddCost);
         $pUpdate = $pdo->prepare("UPDATE projects SET total_profit = ? WHERE id = ?");
         $pUpdate->execute([$profit, $projectId]);
 
@@ -138,7 +160,7 @@ elseif ($method === 'POST') {
     } catch (Exception $e) {
         $pdo->rollBack();
         http_response_code(500);
-        echo json_encode(["success" => false, "error" => $e->getMessage()]);
+        echo json_encode(["success" => false, "message" => $e->getMessage()]);
     }
 }
 
@@ -149,6 +171,20 @@ elseif ($method === 'PUT') {
     try {
         $pdo->beginTransaction();
 
+        // If request attempts to mark project as Completed, validate all payments are received
+        if (isset($data['status']) && $data['status'] === 'Completed') {
+            $payCheck = $pdo->prepare("SELECT COUNT(*) as total, SUM(CASE WHEN LOWER(status)='paid' THEN 1 ELSE 0 END) as paid FROM payments WHERE project_id = ?");
+            $payCheck->execute([$id]);
+            $row = $payCheck->fetch();
+            $totalPayments = isset($row['total']) ? intval($row['total']) : 0;
+            $paidCount = isset($row['paid']) ? intval($row['paid']) : 0;
+
+            if ($totalPayments < 3 || $paidCount < $totalPayments || $paidCount < 3) {
+                $pdo->rollBack();
+                echo json_encode(["success" => false, "message" => "Please collect all remaining payments before completing this project."]);
+                exit;
+            }
+        }
         // Update Project Basics
         // For simplicity, we expect all fields or use COALESCE in SQL, but simpler to just update what's sent.
         // However, calculating profit requires knowing all costs.
@@ -176,9 +212,13 @@ elseif ($method === 'PUT') {
         // Update Developers (Delete all, re-insert) - classic simple approach
         if (isset($data['developers'])) {
             $pdo->prepare("DELETE FROM project_developers WHERE project_id=?")->execute([$id]);
-            $dStmt = $pdo->prepare("INSERT INTO project_developers (project_id, developer_id, cost) VALUES (?, ?, ?)");
+            $dStmt = $pdo->prepare("INSERT INTO project_developers (project_id, developer_id, cost, is_advance_paid, is_final_paid) VALUES (?, ?, ?, ?, ?)");
             foreach ($data['developers'] as $dev) {
-                $dStmt->execute([$id, $dev['id'], $dev['cost']]);
+                $devId = isset($dev['id']) ? intval($dev['id']) : 0;
+                $cost = isset($dev['cost']) ? (float)$dev['cost'] : 0.0;
+                $isAdvance = !empty($dev['is_advance_paid']) ? 1 : 0;
+                $isFinal = !empty($dev['is_final_paid']) ? 1 : 0;
+                $dStmt->execute([$id, $devId, $cost, $isAdvance, $isFinal]);
             }
         }
 
@@ -197,7 +237,11 @@ elseif ($method === 'PUT') {
         $revStmt->execute([$id]);
         $revenue = $revStmt->fetchColumn();
 
-        $devCostStmt = $pdo->prepare("SELECT SUM(cost) FROM project_developers WHERE project_id=?");
+        // Calculate developer PAID amounts (advance 40% and final 60%)
+        $devCostStmt = $pdo->prepare("SELECT IFNULL(SUM(
+            (CASE WHEN is_advance_paid=1 THEN cost*0.4 ELSE 0 END) +
+            (CASE WHEN is_final_paid=1 THEN cost*0.6 ELSE 0 END)
+        ),0) as paid_sum FROM project_developers WHERE project_id=?");
         $devCostStmt->execute([$id]);
         $devCost = $devCostStmt->fetchColumn() ?: 0;
 
@@ -214,7 +258,7 @@ elseif ($method === 'PUT') {
     } catch (Exception $e) {
         $pdo->rollBack();
         http_response_code(500);
-        echo json_encode(["success" => false, "error" => $e->getMessage()]);
+        echo json_encode(["success" => false, "message" => $e->getMessage()]);
     }
 }
 

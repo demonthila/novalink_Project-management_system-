@@ -24,11 +24,10 @@ elseif ($method === 'POST') {
         exit(json_encode(["error" => "Name and Role are required"]));
     }
     
-    $stmt = $pdo->prepare("INSERT INTO developers (name, role, hourly_rate, email, status) VALUES (?, ?, ?, ?, ?)");
+    $stmt = $pdo->prepare("INSERT INTO developers (name, role, email, status) VALUES (?, ?, ?, ?)");
     $stmt->execute([
         $data['name'], 
         $data['role'], 
-        $data['hourly_rate'] ?? 0.00,
         $data['email'] ?? '', 
         $data['status'] ?? 'Active'
     ]);
@@ -43,7 +42,7 @@ elseif ($method === 'PUT') {
     $fields = [];
     $params = [];
     
-    foreach(['name', 'role', 'hourly_rate', 'email', 'status'] as $f) {
+    foreach(['name', 'role', 'email', 'status'] as $f) {
         if (isset($data[$f])) {
             $fields[] = "$f = ?";
             $params[] = $data[$f];

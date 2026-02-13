@@ -5,7 +5,7 @@ import Dashboard from './components/Dashboard';
 import ClientList from './components/ClientList';
 import ProjectList from './components/ProjectList';
 import DeveloperList from './components/DeveloperList';
-import TaskBoard from './components/TaskBoard';
+// TaskBoard (Mission Control) removed
 import PendingProjectManager from './components/PendingProjectManager';
 import Login from './components/Login';
 import ProjectModal from './components/ProjectModal';
@@ -104,7 +104,7 @@ const App: React.FC = () => {
           setShowProjectModal(false);
           setEditingProject(null);
         } else {
-          alert("Update Failed: " + res.error);
+          alert("Update Failed: " + (res.message || res.error || JSON.stringify(res)));
         }
       } else {
         // Create
@@ -113,7 +113,7 @@ const App: React.FC = () => {
           await refreshData();
           setShowProjectModal(false);
         } else {
-          alert("Creation Failed: " + res.error);
+          alert("Creation Failed: " + (res.message || res.error || JSON.stringify(res)));
         }
       }
     } catch (e) {
@@ -171,6 +171,21 @@ const App: React.FC = () => {
         <ProjectList
           projects={projects.filter(p => ['Active', 'Pending'].includes(p.status))}
           clients={clients} developers={developers}
+          onAdd={() => { setEditingProject(null); setShowProjectModal(true); }}
+          onEdit={(p) => { setEditingProject(p); setShowProjectModal(true); }}
+          onView={(p) => setSelectedProjectForDetail(p)}
+          onDelete={handleDeleteProject}
+          onUpdate={(p) => handleSaveProject(p)}
+        />
+      )}
+
+      {activeTab === 'pending' && (
+        <ProjectList
+          title="Pending Approval"
+          description="Projects awaiting client or internal approval."
+          projects={projects.filter(p => p.status === 'Pending')}
+          clients={clients}
+          developers={developers}
           onAdd={() => { setEditingProject(null); setShowProjectModal(true); }}
           onEdit={(p) => { setEditingProject(p); setShowProjectModal(true); }}
           onView={(p) => setSelectedProjectForDetail(p)}
