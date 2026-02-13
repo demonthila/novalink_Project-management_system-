@@ -156,10 +156,26 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
               </div>
               <div className="space-y-1">
                 <label className={LABEL_CLASSES}>Client</label>
-                <select required className={INPUT_CLASSES} value={formData.client_id} onChange={e => setFormData({ ...formData, client_id: e.target.value })}>
+                <select
+                  required
+                  className={INPUT_CLASSES}
+                  value={formData.client_id ? String(formData.client_id) : ""}
+                  onChange={e => setFormData({ ...formData, client_id: e.target.value })}
+                >
                   <option value="">Select Client</option>
-                  {clients.map(c => <option key={c.id} value={c.id}>{c.company_name}</option>)}
+                  {Array.isArray(clients) && clients.length > 0 ? (
+                    clients.map(c => (
+                      <option key={String(c.id)} value={String(c.id)}>
+                        {c.company_name} ({c.name})
+                      </option>
+                    ))
+                  ) : (
+                    <option disabled>No clients available</option>
+                  )}
                 </select>
+                {Array.isArray(clients) && clients.length === 0 && (
+                  <p className="text-xs text-red-500 mt-1 italic font-medium">Please add a partner/client first.</p>
+                )}
               </div>
               <div className="space-y-1">
                 <label className={LABEL_CLASSES}>Total Revenue (Contract Value)</label>
@@ -191,9 +207,18 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
                 <div key={idx} className="p-6 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col sm:flex-row gap-4 sm:items-end">
                   <div className="flex-1 space-y-1">
                     <label className={LABEL_CLASSES}>Developer</label>
-                    <select required className={INPUT_CLASSES} value={dev.id} onChange={e => handleUpdateDeveloper(idx, 'id', e.target.value)}>
+                    <select
+                      required
+                      className={INPUT_CLASSES}
+                      value={dev.id ? String(dev.id) : ""}
+                      onChange={e => handleUpdateDeveloper(idx, 'id', e.target.value)}
+                    >
                       <option value="">Select Developer</option>
-                      {developers.map(d => <option key={d.id} value={d.id}>{d.name} ({d.role})</option>)}
+                      {Array.isArray(developers) && developers.map(d => (
+                        <option key={String(d.id)} value={String(d.id)}>
+                          {d.name} ({d.role})
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div className="flex-1 space-y-1">
@@ -259,6 +284,20 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
               ))}
               {formData.additional_costs.length === 0 && <p className="text-center text-slate-400 font-medium text-sm">No additional costs.</p>}
             </div>
+          </div>
+
+          {/* Project Notes */}
+          <div className={SECTION_CONTAINER}>
+            <div className="flex items-center gap-3 text-slate-600 mb-8">
+              <ICONS.Info />
+              <h3 className="text-[12px] font-black uppercase tracking-[0.2em]">Project Notes</h3>
+            </div>
+            <textarea
+              className={`${INPUT_CLASSES} h-32 py-4 resize-none`}
+              placeholder="Internal project notes and details..."
+              value={formData.notes || ''}
+              onChange={e => setFormData({ ...formData, notes: e.target.value })}
+            />
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-end gap-4 pt-6 pb-12 sm:pb-0">

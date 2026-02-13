@@ -87,3 +87,13 @@ export interface DashboardStats {
   recentProjects: Project[];
   upcomingPayments: Payment[];
 }
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  password: string;
+  role: 'Admin' | 'User';
+  createdAt: string;
+}
+

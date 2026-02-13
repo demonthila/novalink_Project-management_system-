@@ -1,4 +1,5 @@
-const API_BASE = 'http://localhost:8000/api'; // Change in production
+const API_BASE = '/api'; // Use relative path for proxy
+
 
 export async function fetchStats() {
     const res = await fetch(`${API_BASE}/dashboard.php`);

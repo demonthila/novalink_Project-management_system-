@@ -42,8 +42,23 @@ const App: React.FC = () => {
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Initial Data Fetch
+  // Check Auth on mount
   useEffect(() => {
+    const savedAuth = localStorage.getItem('it_auth_user');
+    if (savedAuth) {
+      try {
+        setCurrentUser(JSON.parse(savedAuth));
+      } catch (e) {
+        console.error("Failed to parse saved auth", e);
+        localStorage.removeItem('it_auth_user');
+      }
+    }
+  }, []);
+
+  // Load data only when user is authenticated
+  useEffect(() => {
+    if (!currentUser) return;
+
     const loadData = async () => {
       try {
         setLoading(true);
@@ -53,23 +68,24 @@ const App: React.FC = () => {
           fetchDevelopers(),
           fetchNotifications()
         ]);
-        setProjects(pData || []);
-        setClients(cData || []);
-        setDevelopers(dData || []);
-        setNotifications(nData || []);
+        setProjects(Array.isArray(pData) ? pData : []);
+        setClients(Array.isArray(cData) ? cData : []);
+        setDevelopers(Array.isArray(dData) ? dData : []);
+        setNotifications(Array.isArray(nData) ? nData : []);
       } catch (err) {
         console.error("Failed to load initial data", err);
+        // Set empty arrays on error to prevent crashes
+        setProjects([]);
+        setClients([]);
+        setDevelopers([]);
+        setNotifications([]);
       } finally {
         setLoading(false);
       }
     };
 
-    // Check Auth
-    const savedAuth = localStorage.getItem('it_auth_user');
-    if (savedAuth) setCurrentUser(JSON.parse(savedAuth));
-
     loadData();
-  }, []);
+  }, [currentUser]);
 
   const refreshData = async () => {
     const pData = await fetchProjects();

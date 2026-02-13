@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS `projects` (
   `total_revenue` decimal(15,2) DEFAULT 0.00,
   `total_profit` decimal(15,2) DEFAULT 0.00,
   `currency` varchar(10) DEFAULT 'USD',
+  `notes` TEXT,
   `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   FOREIGN KEY (`client_id`) REFERENCES `clients`(`id`) ON DELETE CASCADE
