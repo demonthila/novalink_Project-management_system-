@@ -122,7 +122,10 @@ elseif ($method === 'POST') {
         $start = !empty($data['start_date']) ? new DateTime($data['start_date']) : new DateTime();
         $end = !empty($data['end_date']) ? new DateTime($data['end_date']) : (clone $start)->modify('+1 month');
         
-        $mid = (clone $start)->add($start->diff($end)->div(2)); // Rough midpoint
+        $diff = $start->diff($end);
+        $totalDays = $diff->days;
+        $midDays = floor($totalDays / 2);
+        $mid = (clone $start)->modify("+$midDays days");
 
         $payStmt = $pdo->prepare("INSERT INTO payments (project_id, payment_number, amount, due_date, status) VALUES (?, ?, ?, ?, 'Unpaid')");
         $payStmt->execute([$projectId, 1, $p1, $start->format('Y-m-d')]);
