@@ -77,9 +77,13 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
     // Additional Costs
     const totalAddCosts = calculateTotalAdditionalCosts(formData.additional_costs || []); // Sum of amounts
 
-    // Developer Costs
-    // Map formData.developers (which has {id, cost})
-    const devCosts = (formData.developers || []).reduce((sum: number, d: any) => sum + (parseFloat(d.cost) || 0), 0);
+    // Developer Costs (only amounts actually paid to developers)
+    // Each developer: advance = 40% of cost when is_advance_paid, final = 60% when is_final_paid
+    const devCosts = (formData.developers || []).reduce((sum: number, d: any) => {
+      const cost = parseFloat(d.cost) || 0;
+      const paid = (d.is_advance_paid ? cost * 0.4 : 0) + (d.is_final_paid ? cost * 0.6 : 0);
+      return sum + paid;
+    }, 0);
 
     const totalCosts = totalAddCosts + devCosts;
     const profit = revenue - totalCosts;

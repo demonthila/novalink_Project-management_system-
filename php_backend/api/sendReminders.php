@@ -10,16 +10,7 @@ if (php_sapi_name() !== 'cli' && (!isset($_GET['secret']) || $_GET['secret'] !==
 }
 
 require_once 'config.php';
-
-// Helper: Send Email
-function sendEmail($to, $subject, $message) {
-    // Basic mail() wrapper. Replace with PHPMailer for SMTP if needed.
-    $headers = "From: Stratis Notifications <no-reply@stratis.com>\r\n";
-    $headers .= "Reply-To: novalinkhelp@gmail.com\r\n";
-    $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
-    
-    return mail($to, $subject, $message, $headers);
-}
+require_once 'mail_helper.php';
 
 // 1. Payment Reminders (1 day before due date, unpaid)
 $stmt = $pdo->query("
@@ -37,7 +28,7 @@ foreach ($payments as $p) {
     $sysMsg = "Payment reminder sent for project {$p['project_name']}.";
     
     // Notify Admin
-    sendEmail('novalinkhelp@gmail.com', 'Payment Reminder: ' . $p['project_name'], $msg);
+    send_email('novalinkhelp@gmail.com', 'Payment Reminder: ' . $p['project_name'], $msg, 'no-reply@stratis.com', 'Stratis Notifications');
     // Add Notification
     $pdo->prepare("INSERT INTO notifications (project_id, type, message, sent_to) VALUES (?, 'Payment', ?, ?)")
         ->execute([$p['project_id'], $sysMsg, 'novalinkhelp@gmail.com']);
@@ -53,7 +44,7 @@ $deadlines = $stmt->fetchAll();
 
 foreach ($deadlines as $d) {
     $msg = "Project '{$d['name']}' deadline is in 3 days ({$d['end_date']}). Please ensure all tasks are on track.";
-    sendEmail('novalinkhelp@gmail.com', 'Deadline Warning: ' . $d['name'], $msg);
+    send_email('novalinkhelp@gmail.com', 'Deadline Warning: ' . $d['name'], $msg, 'no-reply@stratis.com', 'Stratis Notifications');
     $pdo->prepare("INSERT INTO notifications (project_id, type, message, sent_to) VALUES (?, 'Deadline', ?, ?)")
         ->execute([$d['id'], $msg, 'novalinkhelp@gmail.com']);
 }
@@ -63,7 +54,7 @@ foreach ($deadlines as $d) {
 // We can check if today is 1st of month and month % 2 == 0.
 if (date('j') == 1 && date('n') % 2 == 0) {
     $msg = "Bi-monthly backup reminder. Please download the latest backup from Settings.";
-    sendEmail('novalinkhelp@gmail.com', 'System Backup Reminder', $msg);
+    send_email('novalinkhelp@gmail.com', 'System Backup Reminder', $msg, 'no-reply@stratis.com', 'Stratis Notifications');
     $pdo->prepare("INSERT INTO notifications (type, message, sent_to) VALUES ('Backup', ?, ?)")
         ->execute([$msg, 'novalinkhelp@gmail.com']);
 }

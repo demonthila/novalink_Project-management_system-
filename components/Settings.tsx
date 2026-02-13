@@ -122,6 +122,30 @@ const Settings: React.FC<SettingsProps> = ({ users, onAddUser, onDeleteUser, cur
                                 <ICONS.Download />
                                 Download Backup
                             </a>
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        const res = await fetch('/api/export_projects_csv.php');
+                                        if (!res.ok) throw new Error('Export failed');
+                                        const blob = await res.blob();
+                                        const url = window.URL.createObjectURL(blob);
+                                        const a = document.createElement('a');
+                                        a.href = url;
+                                        a.download = 'projects_export.csv';
+                                        document.body.appendChild(a);
+                                        a.click();
+                                        a.remove();
+                                        window.URL.revokeObjectURL(url);
+                                    } catch (err) {
+                                        console.error(err);
+                                        alert('Failed to export projects.');
+                                    }
+                                }}
+                                className="flex-1 bg-white border border-slate-100 text-slate-800 font-bold rounded-2xl px-5 py-4 hover:bg-slate-50 active:scale-95 transition-all flex items-center justify-center gap-2"
+                            >
+                                <ICONS.Download />
+                                Export Projects (CSV)
+                            </button>
                         </div>
                         <p className="text-xs text-slate-400 font-medium px-1">Export full JSON database (CSV).</p>
                     </div>

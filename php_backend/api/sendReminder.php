@@ -1,6 +1,7 @@
 <?php
 // api/sendReminder.php
 require_once 'config.php';
+require_once 'mail_helper.php';
 
 // Secure Secret Key (Prevent random access)
 $inputKey = $_GET['key'] ?? '';
@@ -43,8 +44,8 @@ $headers = "MIME-Version: 1.0" . "\r\n";
 $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
 $headers .= 'From: Stratis System <noreply@yourdomain.com>' . "\r\n";
 
-// Send Email
-if (mail($to, $subject, $message, $headers)) {
+// Send Email (via PHPMailer if available)
+if (send_email($to, $subject, $message, 'noreply@yourdomain.com', 'Stratis System')) {
     echo json_encode(["success" => true, "message" => "Reminder sent"]);
 } else {
     http_response_code(500);

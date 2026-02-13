@@ -1,6 +1,7 @@
 <?php
 // api/sendPaymentReminder.php
 require_once 'config.php';
+require_once 'mail_helper.php';
 
 // Secure with Cron Secret
 $inputKey = $_GET['key'] ?? '';
@@ -76,7 +77,7 @@ foreach ($overduePayments as $payment) {
     $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
     $headers .= 'From: Stratis Accounts <noreply@stratis.com>' . "\r\n";
 
-    if (mail($to, $subject, $message, $headers)) {
+    if (send_email($to, $subject, $message, 'noreply@stratis.com', 'Stratis Accounts')) {
         $emailsSent++;
     }
 }

@@ -41,8 +41,8 @@ if ($method === 'GET') {
             $project['payments'] = $pStmt->fetchAll();
 
             // Fetch Developers
-            $dStmt = $pdo->prepare("
-                SELECT d.id, d.name, d.role, pd.cost 
+            $dStmt = $pdo->prepare(
+                "SELECT d.id, d.name, d.role, pd.cost, IFNULL(pd.is_advance_paid,0) AS is_advance_paid, IFNULL(pd.is_final_paid,0) AS is_final_paid
                 FROM developers d
                 JOIN project_developers pd ON d.id = pd.developer_id
                 WHERE pd.project_id = ?
