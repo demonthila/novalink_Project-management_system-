@@ -1,5 +1,6 @@
 <?php
 // api/config.php
+ob_start(); // Prevent any stray output (BOM, whitespace) from breaking JSON
 
 // SECURITY BEST PRACTICE:
 // On Hostinger, place a file named 'secrets.php' one level ABOVE public_html.
@@ -26,7 +27,7 @@ if (file_exists($secretFile)) {
 } else {
     // FALLBACK / LOCAL DEVELOPMENT VARIABLES
     if (!defined('DB_HOST')) define('DB_HOST', 'localhost');
-    if (!defined('DB_NAME')) define('DB_NAME', 'u123456789_novalink');
+    if (!defined('DB_NAME')) define('DB_NAME', 'novalink');
     if (!defined('DB_USER')) define('DB_USER', 'root');
     if (!defined('DB_PASS')) define('DB_PASS', '');
     if (!defined('GEMINI_API_KEY')) define('GEMINI_API_KEY', 'your_dev_key_here');
@@ -39,8 +40,10 @@ try {
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 } catch(PDOException $e) {
+    ob_clean();
     http_response_code(500);
-    echo json_encode(["error" => "Database connection failed."]);
+    header("Content-Type: application/json; charset=UTF-8");
+    echo json_encode(["success" => false, "message" => "Database connection failed. Create the database 'novalink' and check secrets.php."]);
     exit();
 }
 
@@ -52,4 +55,3 @@ function getJsonInput() {
     }
     return $input;
 }
-?>

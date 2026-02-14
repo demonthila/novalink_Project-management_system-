@@ -15,4 +15,3 @@ define('SMTP_PORT', 587);
 
 // Security
 define('CRON_SECRET', 'stratis_secure_cron_token_123');
-?>

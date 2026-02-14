@@ -58,8 +58,28 @@ elseif ($method === 'PUT') {
 }
 
 elseif ($method === 'DELETE') {
-    if (!$id) exit(json_encode(["error" => "ID required"]));
-    $pdo->prepare("DELETE FROM clients WHERE id = ?")->execute([$id]);
-    echo json_encode(["success" => true]);
+    if (!$id) {
+        $body = json_decode(file_get_contents('php://input'), true);
+        if (!empty($body['id'])) $id = (int) $body['id'];
+    }
+    if (!$id) {
+        http_response_code(400);
+        exit(json_encode(["success" => false, "error" => "ID required"]));
+    }
+    try {
+        $stmt = $pdo->prepare("SELECT id FROM projects WHERE client_id = ?");
+        $stmt->execute([$id]);
+        $projectIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        if (!empty($projectIds)) {
+            $placeholders = implode(',', array_fill(0, count($projectIds), '?'));
+            $pdo->prepare("DELETE FROM project_developers WHERE project_id IN ($placeholders)")->execute($projectIds);
+        }
+        $pdo->prepare("DELETE FROM projects WHERE client_id = ?")->execute([$id]);
+        $pdo->prepare("DELETE FROM clients WHERE id = ?")->execute([$id]);
+        echo json_encode(["success" => true]);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(["success" => false, "error" => $e->getMessage()]);
+    }
 }
 ?>

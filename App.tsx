@@ -34,6 +34,7 @@ const App: React.FC = () => {
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
+  const [settingsUsers, setSettingsUsers] = useState<User[]>([]);
 
   // Check Auth on mount
   useEffect(() => {
@@ -87,6 +88,100 @@ const App: React.FC = () => {
     setNotifications(nData);
   };
 
+  const [settingsUsersLoading, setSettingsUsersLoading] = useState(false);
+  const [settingsUsersAdminOnly, setSettingsUsersAdminOnly] = useState(false);
+
+  const fetchSettingsUsers = async () => {
+    if (!currentUser) return;
+    setSettingsUsersLoading(true);
+    setSettingsUsersAdminOnly(false);
+    try {
+      const res = await fetch('/api/users.php', { credentials: 'include' });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 403) {
+        setSettingsUsersAdminOnly(true);
+        setSettingsUsers([{ ...currentUser }]);
+      } else if (data.success && Array.isArray(data.users)) {
+        setSettingsUsers(data.users.map((u: any) => ({
+          id: String(u.id),
+          name: u.name,
+          email: u.email,
+          password: '',
+          role: u.role || 'User',
+          createdAt: u.createdAt || u.created_at || new Date().toISOString()
+        })));
+      } else {
+        setSettingsUsers([{ ...currentUser }]);
+      }
+    } catch {
+      setSettingsUsers([{ ...currentUser }]);
+    } finally {
+      setSettingsUsersLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (currentUser && activeTab === 'settings') fetchSettingsUsers();
+  }, [currentUser, activeTab]);
+
+  const handleAddUser = async (user: Omit<User, 'id' | 'createdAt'>) => {
+    try {
+      const res = await fetch('/api/auth.php?action=register', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: user.name, email: user.email, password: user.password, role: user.role })
+      });
+      const data = await res.json();
+      if (data.success) {
+        await fetchSettingsUsers();
+      } else {
+        alert(data.message || 'Failed to add user');
+      }
+    } catch (err) {
+      alert('Failed to add user');
+    }
+  };
+
+  const handleDeleteUser = async (id: string) => {
+    try {
+      const res = await fetch('/api/users.php', {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: Number(id) })
+      });
+      const data = await res.json();
+      if (data.success) await fetchSettingsUsers();
+      else alert(data.message || 'Failed to remove user');
+    } catch {
+      alert('Failed to remove user');
+    }
+  };
+
+  const handleEditUser = async (id: string, updates: { name?: string; email?: string; password?: string; role?: 'Admin' | 'User' }): Promise<boolean> => {
+    try {
+      const body: any = { id: Number(id), ...updates };
+      if (updates.password === '') delete body.password;
+      const res = await fetch('/api/update_user.php', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (data.success) {
+        await fetchSettingsUsers();
+        return true;
+      }
+      alert(data.message || data.error || 'Failed to update user');
+      return false;
+    } catch {
+      alert('Failed to update user');
+      return false;
+    }
+  };
+
   const handleSaveProject = async (data: any) => {
     try {
       if (data.id) {
@@ -127,10 +222,23 @@ const App: React.FC = () => {
     try {
       const res = await fetch('/api/auth.php?action=login', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: creds.email, password: creds.pass })
       });
-      const data = await res.json();
+      let data: { success?: boolean; message?: string; user?: { id: number; name: string; role: string } };
+      const text = await res.text();
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        console.error('Login API response (not JSON):', text?.slice(0, 500));
+        data = {
+          success: false,
+          message: text?.includes('Database connection failed') || text?.includes('error')
+            ? (text.match(/"message":"([^"]+)"/)?.[1] || text.slice(0, 150))
+            : 'Server error: API did not return valid JSON. Check that the database exists and npm run dev:api is running.'
+        };
+      }
       if (res.ok && data.success && data.user) {
         const user: any = {
           id: data.user.id || creds.email,
@@ -147,7 +255,10 @@ const App: React.FC = () => {
       }
     } catch (err) {
       console.error('Login error', err);
-      alert('Login failed - please contact your administrator.');
+      const isNetworkError = err instanceof TypeError && (err as Error).message?.toLowerCase().includes('fetch');
+      alert(isNetworkError
+        ? 'Cannot reach the server. Start the API with: npm run dev:api (in a separate terminal), then try again.'
+        : 'Login failed - please contact your administrator.');
     }
   };
 
@@ -249,7 +360,7 @@ const App: React.FC = () => {
         />
       )}
 
-      {activeTab === 'settings' && <Settings users={[currentUser]} currentUserEmail={currentUser.email} onAddUser={() => { }} onDeleteUser={() => { }} />}
+      {activeTab === 'settings' && <Settings users={settingsUsers} currentUserEmail={currentUser.email} currentUserRole={currentUser.role} usersLoading={settingsUsersLoading} adminOnlyMessage={settingsUsersAdminOnly} onAddUser={handleAddUser} onDeleteUser={handleDeleteUser} onEditUser={handleEditUser} />}
 
       {selectedProjectForDetail && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" onClick={() => setSelectedProjectForDetail(null)}>

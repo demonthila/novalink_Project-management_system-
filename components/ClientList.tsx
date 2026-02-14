@@ -93,9 +93,19 @@ const ClientList: React.FC<ClientListProps> = ({ clients, projects, onAdd, onUpd
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Delete this client?")) return;
-    await fetch(`/api/clients.php?id=${id}`, { method: 'DELETE' });
-    onUpdate(); // Trigger refresh
+    if (!confirm("Delete this client? Their projects will also be removed.")) return;
+    try {
+      const res = await fetch(`/api/clients.php?id=${id}`, { method: 'DELETE' });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        onDelete(id);
+      } else {
+        alert(data.error || data.message || "Could not delete client.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Failed to delete client.");
+    }
   };
 
   return (

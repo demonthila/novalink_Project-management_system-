@@ -1,18 +1,24 @@
 
 import React, { useState, useEffect } from 'react';
-import { User, Settings as AppSettings } from '../types';
+import { User } from '../types';
 import { ICONS } from '../constants';
 import { fetchSettings, updateSettings } from '../services/api';
 
 interface SettingsProps {
     users: User[];
+    currentUserEmail: string;
+    currentUserRole: string;
+    usersLoading: boolean;
+    adminOnlyMessage: boolean;
     onAddUser: (user: Omit<User, 'id' | 'createdAt'>) => void;
     onDeleteUser: (id: string) => void;
-    currentUserEmail: string;
+    onEditUser: (id: string, updates: { name?: string; email?: string; password?: string; role?: 'Admin' | 'User' }) => void | Promise<boolean>;
 }
 
-const Settings: React.FC<SettingsProps> = ({ users, onAddUser, onDeleteUser, currentUserEmail }) => {
+const Settings: React.FC<SettingsProps> = ({ users, currentUserEmail, currentUserRole, usersLoading, adminOnlyMessage, onAddUser, onDeleteUser, onEditUser }) => {
     const [showAddModal, setShowAddModal] = useState(false);
+    const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [editForm, setEditForm] = useState({ name: '', email: '', password: '', role: 'User' as 'Admin' | 'User' });
     const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'User' as 'Admin' | 'User' });
     const [currency, setCurrency] = useState('AUD');
     const [demoAdminExists, setDemoAdminExists] = useState<boolean | null>(null);
@@ -21,7 +27,7 @@ const Settings: React.FC<SettingsProps> = ({ users, onAddUser, onDeleteUser, cur
         const loadSettings = async () => {
             try {
                 const settings = await fetchSettings();
-                if (settings && settings.currency) {
+                if (settings?.currency) {
                     setCurrency(settings.currency);
                     localStorage.setItem('stratis_currency', settings.currency);
                 }
@@ -30,17 +36,18 @@ const Settings: React.FC<SettingsProps> = ({ users, onAddUser, onDeleteUser, cur
             }
         };
         loadSettings();
-        // check demo admin presence
         (async () => {
             try {
                 const res = await fetch('/api/create_demo_admin.php');
                 const j = await res.json();
                 setDemoAdminExists(j.exists === true);
-            } catch (err) {
+            } catch {
                 setDemoAdminExists(null);
             }
         })();
     }, []);
+
+    const isAdmin = currentUserRole === 'Admin';
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -50,346 +57,365 @@ const Settings: React.FC<SettingsProps> = ({ users, onAddUser, onDeleteUser, cur
     };
 
     const handleCurrencyChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const newCurrency = e.target.value;
-        setCurrency(newCurrency);
-        localStorage.setItem('stratis_currency', newCurrency);
+        const v = e.target.value;
+        setCurrency(v);
+        localStorage.setItem('stratis_currency', v);
         window.dispatchEvent(new Event('stratis-currency-change'));
-
         try {
-            await updateSettings({ currency: newCurrency });
+            await updateSettings({ currency: v });
         } catch (error) {
-            console.error("Failed to save currency setting", error);
+            console.error("Failed to save currency", error);
         }
     };
 
-    // Reminder/testing endpoints removed from UI per request
+    const handleDeleteClick = (user: User) => {
+        if (user.email === currentUserEmail) {
+            alert("You cannot delete your own account.");
+            return;
+        }
+        if (!confirm(`Remove access for ${user.name} (${user.email})?`)) return;
+        onDeleteUser(user.id);
+    };
 
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h2 className="text-3xl font-black text-[#0F172A] tracking-tighter">System Settings</h2>
-                    <p className="text-slate-500 font-medium mt-1">Manage global preferences and user access.</p>
-                </div>
+        <div className="space-y-6 max-w-4xl">
+            <div>
+                <h2 className="text-xl font-bold text-slate-800 tracking-tight">Settings</h2>
+                <p className="text-slate-500 text-sm mt-0.5">Preferences and access control.</p>
             </div>
 
-            {/* Global Preferences Card */}
-            <div className="bg-white p-6 sm:p-8 rounded-[32px] border border-slate-100 shadow-sm">
-                <h3 className="text-xl font-black text-[#0F172A] mb-6 flex items-center gap-2">
-                    <ICONS.Settings /> Preferences
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {/* Currency Selector */}
-                    <div className="space-y-2">
-                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">System Currency</label>
-                        <div className="relative">
-                            <select
-                                value={currency}
-                                onChange={handleCurrencyChange}
-                                className="w-full appearance-none bg-slate-50 border border-slate-200 text-[#0F172A] font-bold text-lg rounded-2xl px-5 py-4 focus:ring-4 focus:ring-blue-50 focus:border-blue-500 outline-none transition-all cursor-pointer hover:bg-slate-100"
-                            >
-                                <option value="USD">USD ($)</option>
-                                <option value="EUR">EUR (€)</option>
-                                <option value="GBP">GBP (£)</option>
-                                <option value="LKR">LKR (Rs)</option>
-                                <option value="AUD">AUD ($)</option>
-                                <option value="CAD">CAD ($)</option>
-                            </select>
-                            <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
-                            </div>
-                        </div>
-                        <p className="text-xs text-slate-400 font-medium px-1">Applied to all financial reports.</p>
+            <section className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/50">
+                    <h3 className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-2">
+                        <ICONS.Settings /> Preferences
+                    </h3>
+                </div>
+                <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Currency</label>
+                        <select
+                            value={currency}
+                            onChange={handleCurrencyChange}
+                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                        >
+                            <option value="USD">USD ($)</option>
+                            <option value="EUR">EUR (€)</option>
+                            <option value="GBP">GBP (£)</option>
+                            <option value="LKR">LKR (Rs)</option>
+                            <option value="AUD">AUD ($)</option>
+                            <option value="CAD">CAD ($)</option>
+                        </select>
+                        <p className="text-xs text-slate-400 mt-1">Used for reports and amounts.</p>
                     </div>
-
-                    {/* Data Management */}
-                    <div className="space-y-2">
-                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">Data Management</label>
-                        <div className="flex gap-3">
-                            <button
-                                onClick={async () => {
-                                    const date = new Date().toISOString().slice(0,10);
-                                    try {
-                                        const res = await fetch('/api/export_projects_csv.php');
-                                        if (!res.ok) throw new Error('Export failed');
-                                        const blob = await res.blob();
-                                        const url = window.URL.createObjectURL(blob);
-                                        const a = document.createElement('a');
-                                        a.href = url;
-                                        a.download = `projects_export_${date}.csv`;
-                                        document.body.appendChild(a);
-                                        a.click();
-                                        a.remove();
-                                        window.URL.revokeObjectURL(url);
-                                    } catch (err) {
-                                        console.error(err);
-                                        alert('Failed to export projects.');
-                                    }
-                                }}
-                                className="flex-1 bg-white border border-slate-100 text-slate-800 font-bold rounded-2xl px-5 py-4 hover:bg-slate-50 active:scale-95 transition-all flex items-center justify-center gap-2"
-                            >
-                                <ICONS.Download />
-                                Export Projects (CSV)
-                            </button>
-                            <button
-                                onClick={async () => {
-                                    const date = new Date().toISOString().slice(0,10);
-                                    try {
-                                        const res = await fetch('/api/export_clients_csv.php');
-                                        if (!res.ok) throw new Error('Export failed');
-                                        const blob = await res.blob();
-                                        const url = window.URL.createObjectURL(blob);
-                                        const a = document.createElement('a');
-                                        a.href = url;
-                                        a.download = `clients_export_${date}.csv`;
-                                        document.body.appendChild(a);
-                                        a.click();
-                                        a.remove();
-                                        window.URL.revokeObjectURL(url);
-                                    } catch (err) {
-                                        console.error(err);
-                                        alert('Failed to export clients.');
-                                    }
-                                }}
-                                className="flex-1 bg-white border border-slate-100 text-slate-800 font-bold rounded-2xl px-5 py-4 hover:bg-slate-50 active:scale-95 transition-all flex items-center justify-center gap-2"
-                            >
-                                <ICONS.Download />
-                                Export Clients (CSV)
-                            </button>
-                            <button
-                                onClick={async () => {
-                                    const date = new Date().toISOString().slice(0,10);
-                                    try {
-                                        const res = await fetch('/api/export_developers_csv.php');
-                                        if (!res.ok) throw new Error('Export failed');
-                                        const blob = await res.blob();
-                                        const url = window.URL.createObjectURL(blob);
-                                        const a = document.createElement('a');
-                                        a.href = url;
-                                        a.download = `developers_export_${date}.csv`;
-                                        document.body.appendChild(a);
-                                        a.click();
-                                        a.remove();
-                                        window.URL.revokeObjectURL(url);
-                                    } catch (err) {
-                                        console.error(err);
-                                        alert('Failed to export developers.');
-                                    }
-                                }}
-                                className="flex-1 bg-white border border-slate-100 text-slate-800 font-bold rounded-2xl px-5 py-4 hover:bg-slate-50 active:scale-95 transition-all flex items-center justify-center gap-2"
-                            >
-                                <ICONS.Download />
-                                Export Developers (CSV)
-                            </button>
-                        </div>
-                        <p className="text-xs text-slate-400 font-medium px-1">Export structured CSVs for Projects, Clients and Developers.</p>
-                    </div>
-
-                    {/* Email Test removed per request (reminders handled by server cron) */}
-                    {/* Manage Account */}
-                    <div className="space-y-2">
-                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">Manage Account</label>
-                        <div className="grid grid-cols-1 gap-3">
-                            <input placeholder="Name" id="account-name" className="px-4 py-3 rounded-xl border" />
-                            <input placeholder="Email" id="account-email" className="px-4 py-3 rounded-xl border" />
-                            <input placeholder="New password (leave blank to keep)" id="account-password" type="password" className="px-4 py-3 rounded-xl border" />
-                            <div className="flex gap-2">
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Export data</label>
+                        <div className="flex flex-wrap gap-2">
+                            {[
+                                { label: 'Projects', url: '/api/export_projects_csv.php', file: 'projects' },
+                                { label: 'Clients', url: '/api/export_clients_csv.php', file: 'clients' },
+                                { label: 'Developers', url: '/api/export_developers_csv.php', file: 'developers' },
+                            ].map(({ label, url, file }) => (
                                 <button
+                                    key={file}
                                     onClick={async () => {
-                                        const name = (document.getElementById('account-name') as HTMLInputElement).value;
-                                        const email = (document.getElementById('account-email') as HTMLInputElement).value;
-                                        const password = (document.getElementById('account-password') as HTMLInputElement).value;
-                                        if (!name && !email && !password) { alert('Enter at least one field'); return; }
                                         try {
-                                            const res = await fetch('/api/update_user.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, email, password }) });
+                                            const res = await fetch(url);
+                                            if (!res.ok) throw new Error('Export failed');
+                                            const blob = await res.blob();
+                                            const a = document.createElement('a');
+                                            a.href = URL.createObjectURL(blob);
+                                            a.download = `${file}_${new Date().toISOString().slice(0, 10)}.csv`;
+                                            a.click();
+                                            URL.revokeObjectURL(a.href);
+                                        } catch {
+                                            alert(`Failed to export ${label.toLowerCase()}.`);
+                                        }
+                                    }}
+                                    className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition-colors flex items-center gap-2"
+                                >
+                                    <ICONS.Download /> {label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/50 flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <h3 className="text-xs font-bold text-slate-600 uppercase tracking-wider">Access control</h3>
+                        <p className="text-slate-500 text-xs mt-0.5">Add, edit, or remove user access and roles.</p>
+                    </div>
+                    <div className="flex items-center gap-3 flex-wrap">
+                        {demoAdminExists !== null && (
+                            <span className="text-xs text-slate-400">
+                                {demoAdminExists ? (
+                                    <button type="button" onClick={async () => {
+                                        if (!confirm('Remove demo admin (admin)?')) return;
+                                        try {
+                                            const res = await fetch('/api/create_demo_admin.php', { credentials: 'include', method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'delete' }) });
                                             const j = await res.json();
-                                            if (j.success) { alert('Account updated. Please re-login if you changed email or password.'); }
-                                            else alert(j.message || j.error || 'Update failed');
-                                        } catch (err) { alert('Request failed'); }
-                                    }}
-                                    className="px-4 py-3 rounded-xl bg-[#0F172A] text-white font-bold"
-                                >
-                                    Save Account
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        (document.getElementById('account-name') as HTMLInputElement).value = '';
-                                        (document.getElementById('account-email') as HTMLInputElement).value = '';
-                                        (document.getElementById('account-password') as HTMLInputElement).value = '';
-                                    }}
-                                    className="px-4 py-3 rounded-xl bg-white border"
-                                >
-                                    Reset
-                                </button>
-                            </div>
-                            <p className="text-xs text-slate-400">Update your account details here.</p>
-                        </div>
+                                            if (j.success) setDemoAdminExists(false);
+                                            else alert(j.message || 'Failed');
+                                        } catch { alert('Request failed'); }
+                                    }} className="text-rose-500 hover:underline">Remove demo admin</button>
+                                ) : (
+                                    <button type="button" onClick={async () => {
+                                        try {
+                                            const res = await fetch('/api/create_demo_admin.php', { credentials: 'include', method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'create' }) });
+                                            const j = await res.json();
+                                            if (j.success) setDemoAdminExists(true);
+                                            else alert(j.message || 'Failed');
+                                        } catch { alert('Request failed'); }
+                                    }} className="text-emerald-600 hover:underline">Create demo admin</button>
+                                )}
+                            </span>
+                        )}
+                        <button
+                            type="button"
+                            onClick={() => setShowAddModal(true)}
+                            disabled={!isAdmin}
+                            title={!isAdmin ? 'Admin access required to add users' : ''}
+                            className="px-5 py-2.5 bg-[#2563EB] hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold rounded-xl transition-colors flex items-center gap-2"
+                        >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+                            Add user
+                        </button>
                     </div>
                 </div>
-            </div>
 
-            {/* Access Control Header */}
-            <div className="flex items-center justify-between pt-4">
-                <div>
-                    <h2 className="text-2xl font-black text-[#0F172A] tracking-tighter">Access Control</h2>
-                    <p className="text-slate-500 font-medium mt-1">Manage team permissions.</p>
-                </div>
-                <button
-                    onClick={() => setShowAddModal(true)}
-                    className="flex items-center gap-3 bg-[#2563EB] hover:bg-blue-600 text-white px-6 py-4 rounded-[20px] transition-all shadow-xl shadow-blue-200 group active:scale-95"
-                >
-                    <span className="font-bold text-sm uppercase tracking-widest">Add User</span>
-                    <div className="bg-white/20 p-1 rounded-lg group-hover:rotate-90 transition-transform duration-300">
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
+                {adminOnlyMessage && (
+                    <div className="mx-6 mt-4 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+                        Admin access is required to view and manage all users. You can edit your own details below.
                     </div>
-                </button>
-                <div className="ml-3">
-                    {demoAdminExists === null ? (
-                        <button className="px-4 py-3 rounded-xl bg-slate-50 border border-slate-100 text-slate-600">Checking...</button>
-                    ) : demoAdminExists ? (
-                        <button
-                            onClick={async () => {
-                                if (!confirm('Remove demo admin (admin)?')) return;
-                                try {
-                                    const res = await fetch('/api/create_demo_admin.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'delete' }) });
-                                    const j = await res.json();
-                                    if (j.success) setDemoAdminExists(false);
-                                    else alert(j.message || 'Failed');
-                                } catch (err) { alert('Request failed'); }
-                            }}
-                            className="px-4 py-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 font-bold"
-                        >
-                            Remove Demo Admin
-                        </button>
-                    ) : (
-                        <button
-                            onClick={async () => {
-                                try {
-                                    const res = await fetch('/api/create_demo_admin.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'create' }) });
-                                    const j = await res.json();
-                                    if (j.success) setDemoAdminExists(true);
-                                    else alert(j.message || 'Failed to create');
-                                } catch (err) { alert('Request failed'); }
-                            }}
-                            className="px-4 py-3 rounded-xl bg-green-50 border border-green-200 text-green-700 font-bold"
-                        >
-                            Create Demo Admin
-                        </button>
-                    )}
-                </div>
-            </div>
+                )}
 
-            {/* User Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {users.map(user => (
-                    <div key={user.id} className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm hover:shadow-xl hover:border-blue-100 transition-all group relative overflow-hidden">
-                        <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {user.email !== 'admin' && user.email !== currentUserEmail && (
-                                <button
-                                    onClick={() => onDeleteUser(user.id)}
-                                    className="p-2.5 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all shadow-sm"
-                                    title="Revoke Access"
-                                >
-                                    <ICONS.Delete />
-                                </button>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                        <thead>
+                            <tr className="bg-slate-50 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
+                                <th className="px-5 py-3">Name</th>
+                                <th className="px-5 py-3">Email / Username</th>
+                                <th className="px-5 py-3">Role</th>
+                                <th className="px-5 py-3">Joined</th>
+                                <th className="px-5 py-3 text-right w-24">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {usersLoading ? (
+                                <tr>
+                                    <td colSpan={5} className="px-5 py-8 text-center text-slate-400 text-sm">
+                                        Loading users…
+                                    </td>
+                                </tr>
+                            ) : users.length === 0 ? (
+                                <tr>
+                                    <td colSpan={5} className="px-5 py-8 text-center text-slate-400 text-sm">
+                                        No users yet. Admins can click “Add user” to create access.
+                                    </td>
+                                </tr>
+                            ) : (
+                                users.map((user) => (
+                                    <tr key={user.id} className="hover:bg-slate-50/50 transition-colors">
+                                        <td className="px-5 py-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 ${user.role === 'Admin' ? 'bg-slate-800 text-white' : 'bg-blue-100 text-blue-700'}`}>
+                                                    {user.name.split(/\s+/).map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                                                </div>
+                                                <span className="font-semibold text-slate-800">{user.name}</span>
+                                                {user.email === currentUserEmail && (
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-slate-100 px-2 py-0.5 rounded">You</span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-5 py-3 text-slate-600 text-sm font-medium">{user.email}</td>
+                                        <td className="px-5 py-3">
+                                            <span className={`inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold uppercase ${user.role === 'Admin' ? 'bg-slate-800 text-white' : 'bg-blue-100 text-blue-700'}`}>
+                                                {user.role}
+                                            </span>
+                                        </td>
+                                        <td className="px-5 py-3 text-slate-500 text-sm">
+                                            {new Date(user.createdAt || 0).toLocaleDateString()}
+                                        </td>
+                                        <td className="px-5 py-3 text-right">
+                                            <div className="flex items-center justify-end gap-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setEditingUser(user);
+                                                        setEditForm({ name: user.name, email: user.email, password: '', role: user.role });
+                                                    }}
+                                                    className="p-2 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                                                    title="Edit"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                                </button>
+                                                {user.email !== currentUserEmail && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleDeleteClick(user)}
+                                                        className="p-2 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                                                        title="Remove access"
+                                                    >
+                                                        <ICONS.Delete />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
                             )}
-                        </div>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
 
-                        <div className="flex items-center gap-4 mb-6">
-                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-xl shadow-lg border-2 border-white ${user.role === 'Admin' ? 'bg-[#0F172A] text-white shadow-slate-200' : 'bg-blue-50 text-blue-600 shadow-blue-100'}`}>
-                                {user.name.substring(0, 2).toUpperCase()}
+            {/* Edit user modal */}
+            {editingUser && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm" onClick={() => setEditingUser(null)}>
+                    <div className="bg-white rounded-2xl w-full max-w-md shadow-xl border border-slate-200 p-6 sm:p-8" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-lg font-black text-slate-800 mb-6">Edit user</h3>
+                        <form
+                            onSubmit={async (e) => {
+                                e.preventDefault();
+                                const result = await onEditUser(editingUser.id, {
+                                    name: editForm.name,
+                                    email: editForm.email,
+                                    password: editForm.password || undefined,
+                                    role: editForm.role,
+                                });
+                                if (result) {
+                                    setEditingUser(null);
+                                    setEditForm({ name: '', email: '', password: '', role: 'User' });
+                                }
+                            }}
+                            className="space-y-4"
+                        >
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Name</label>
+                                <input
+                                    required
+                                    value={editForm.name}
+                                    onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-800 font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                                    placeholder="Full name"
+                                />
                             </div>
                             <div>
-                                <h3 className="font-bold text-[#0F172A] text-lg leading-tight">{user.name}</h3>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <div className={`w-2 h-2 rounded-full ${user.role === 'Admin' ? 'bg-[#0F172A]' : 'bg-blue-500'}`} />
-                                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">
-                                        {user.role}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="space-y-3">
-                            <div className="flex justify-between items-center py-2 border-b border-slate-50">
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ID</span>
-                                <span className="font-bold text-slate-700 text-xs truncate max-w-[120px]">{user.email}</span>
-                            </div>
-                            <div className="flex justify-between items-center py-2">
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Joined</span>
-                                <span className="font-bold text-slate-700 text-xs">{new Date(user.createdAt || new Date()).toLocaleDateString()}</span>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            {/* Add User Modal */}
-            {showAddModal && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-200">
-                    <div className="bg-white rounded-[40px] w-full max-w-lg p-8 sm:p-12 shadow-2xl animate-in zoom-in-95 duration-300 border border-slate-100">
-                        <h3 className="text-2xl font-black text-[#0F172A] mb-8">Create New Access</h3>
-                        <form onSubmit={handleSubmit} className="space-y-6">
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-3">Full Name</label>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Email / Username</label>
                                 <input
                                     required
-                                    className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-700 font-bold focus:bg-white focus:border-[#0F172A] focus:ring-4 focus:ring-slate-100 transition-all outline-none"
-                                    placeholder="e.g. John Doe"
-                                    value={newUser.name}
-                                    onChange={e => setNewUser({ ...newUser, name: e.target.value })}
+                                    type="text"
+                                    value={editForm.email}
+                                    onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-800 font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                                    placeholder="email@example.com"
                                 />
                             </div>
-
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-3">Email / Username</label>
-                                <input
-                                    required
-                                    className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-700 font-bold focus:bg-white focus:border-[#0F172A] focus:ring-4 focus:ring-slate-100 transition-all outline-none"
-                                    placeholder="e.g. john@company.com"
-                                    value={newUser.email}
-                                    onChange={e => setNewUser({ ...newUser, email: e.target.value })}
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-3">Password</label>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">New password (optional)</label>
                                 <input
                                     type="password"
-                                    required
-                                    className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-700 font-bold focus:bg-white focus:border-[#0F172A] focus:ring-4 focus:ring-slate-100 transition-all outline-none"
-                                    placeholder="••••••••"
-                                    value={newUser.password}
-                                    onChange={e => setNewUser({ ...newUser, password: e.target.value })}
+                                    value={editForm.password}
+                                    onChange={e => setEditForm(f => ({ ...f, password: e.target.value }))}
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-800 font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                                    placeholder="Leave blank to keep current"
                                 />
                             </div>
-
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-3">Role Permission</label>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Role</label>
                                 <select
-                                    className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-700 font-bold focus:bg-white focus:border-[#0F172A] focus:ring-4 focus:ring-slate-100 transition-all outline-none appearance-none"
-                                    value={newUser.role}
-                                    onChange={e => setNewUser({ ...newUser, role: e.target.value as 'Admin' | 'User' })}
+                                    value={editForm.role}
+                                    onChange={e => setEditForm(f => ({ ...f, role: e.target.value as 'Admin' | 'User' }))}
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-800 font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                                 >
                                     <option value="User">User</option>
                                     <option value="Admin">Admin</option>
                                 </select>
                             </div>
-
-                            <div className="flex gap-4 pt-4">
+                            <div className="flex gap-3 pt-4">
                                 <button
                                     type="button"
-                                    onClick={() => setShowAddModal(false)}
-                                    className="flex-1 py-4 rounded-xl text-slate-500 font-bold hover:bg-slate-50 transition-all"
+                                    onClick={() => { setEditingUser(null); setEditForm({ name: '', email: '', password: '', role: 'User' }); }}
+                                    className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-[2] py-4 bg-[#0F172A] text-white rounded-xl font-bold shadow-xl shadow-slate-200 hover:bg-[#1E293B] transition-all active:scale-95"
+                                    className="flex-1 py-3 rounded-xl bg-slate-800 text-white font-semibold hover:bg-slate-700"
                                 >
-                                    Create Access
+                                    Save changes
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Add user modal */}
+            {showAddModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm" onClick={() => setShowAddModal(false)}>
+                    <div className="bg-white rounded-2xl w-full max-w-md shadow-xl border border-slate-200 p-6 sm:p-8" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-lg font-black text-slate-800 mb-6">Add user</h3>
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Name</label>
+                                <input
+                                    required
+                                    value={newUser.name}
+                                    onChange={e => setNewUser(u => ({ ...u, name: e.target.value }))}
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-800 font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                                    placeholder="Full name"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Email / Username</label>
+                                <input
+                                    required
+                                    type="text"
+                                    value={newUser.email}
+                                    onChange={e => setNewUser(u => ({ ...u, email: e.target.value }))}
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-800 font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                                    placeholder="email@example.com"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Password</label>
+                                <input
+                                    required
+                                    type="password"
+                                    value={newUser.password}
+                                    onChange={e => setNewUser(u => ({ ...u, password: e.target.value }))}
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-800 font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                                    placeholder="••••••••"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Role</label>
+                                <select
+                                    value={newUser.role}
+                                    onChange={e => setNewUser(u => ({ ...u, role: e.target.value as 'Admin' | 'User' }))}
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-800 font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                                >
+                                    <option value="User">User</option>
+                                    <option value="Admin">Admin</option>
+                                </select>
+                            </div>
+                            <div className="flex gap-3 pt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAddModal(false)}
+                                    className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="flex-1 py-3 rounded-xl bg-slate-800 text-white font-semibold hover:bg-slate-700"
+                                >
+                                    Create user
                                 </button>
                             </div>
                         </form>

@@ -67,9 +67,19 @@ const DeveloperList: React.FC<DeveloperListProps> = ({ developers, onAdd, onUpda
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Delete this developer?")) return;
-    await fetch(`/api/developers.php?id=${id}`, { method: 'DELETE' });
-    onDelete(id); // Refresh
+    if (!confirm("Delete this developer? They will be removed from all project assignments.")) return;
+    try {
+      const res = await fetch(`/api/developers.php?id=${id}`, { method: 'DELETE' });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        onDelete(id);
+      } else {
+        alert(data.error || data.message || "Could not delete developer.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Failed to delete developer.");
+    }
   };
 
   return (

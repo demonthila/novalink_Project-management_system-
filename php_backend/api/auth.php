@@ -1,5 +1,6 @@
 <?php
 // api/auth.php
+ob_start(); // Discard any stray output so we only send JSON
 session_start();
 require_once 'config.php';
 
@@ -8,6 +9,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 // Helper to send JSON response
 function jsonResponse($success, $message, $data = []) {
+    ob_clean();
     echo json_encode(array_merge(["success" => $success, "message" => $message], $data));
     exit();
 }
@@ -15,8 +17,10 @@ function jsonResponse($success, $message, $data = []) {
 // 1. LOGIN
 if ($action === 'login' && $method === 'POST') {
     $data = getJsonInput();
-    
-    if (!isset($data['email']) || !isset($data['password'])) {
+    $email = isset($data['email']) ? trim((string) $data['email']) : '';
+    $password = isset($data['password']) ? trim((string) $data['password']) : '';
+
+    if ($email === '' || $password === '') {
         jsonResponse(false, "Missing credentials");
     }
 
@@ -37,32 +41,38 @@ if ($action === 'login' && $method === 'POST') {
         error_log("Users table creation: " . $e->getMessage());
     }
 
-    // Check for demo admin login and auto-create if needed
-    if ($data['email'] === 'admin' && $data['password'] === 'admin123') {
+    // Check for demo admin login (accept "admin" case-insensitive, trimmed)
+    $isDemoAdmin = (strtolower($email) === 'admin' && $password === 'admin123');
+    if ($isDemoAdmin) {
         try {
-            // Check if admin exists
-            $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
+            $stmt = $pdo->prepare("SELECT * FROM users WHERE LOWER(email) = ?");
             $stmt->execute(['admin']);
             $user = $stmt->fetch();
-            
+
             if (!$user) {
-                // Create the demo admin
                 $hash = password_hash('admin123', PASSWORD_DEFAULT);
                 $insert = $pdo->prepare("INSERT INTO users (name, email, password, role, created_at) VALUES (?, ?, ?, ?, NOW())");
                 $insert->execute(['Administrator', 'admin', $hash, 'Admin']);
-                
-                $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
+                $stmt = $pdo->prepare("SELECT * FROM users WHERE LOWER(email) = ?");
                 $stmt->execute(['admin']);
                 $user = $stmt->fetch();
             }
-            
+
+            // If admin exists but password hash is wrong (e.g. from old SQL), fix it
+            if ($user && !password_verify('admin123', $user['password'])) {
+                $hash = password_hash('admin123', PASSWORD_DEFAULT);
+                $update = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
+                $update->execute([$hash, $user['id']]);
+                $user['password'] = $hash;
+            }
+
             if ($user && password_verify('admin123', $user['password'])) {
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['user_role'] = $user['role'];
                 $_SESSION['user_name'] = $user['name'];
                 jsonResponse(true, "Login successful", ["user" => [
-                    "id" => $user['id'], 
-                    "name" => $user['name'], 
+                    "id" => $user['id'],
+                    "name" => $user['name'],
                     "role" => $user['role']
                 ]]);
             } else {
@@ -78,10 +88,10 @@ if ($action === 'login' && $method === 'POST') {
     // Regular login - check database
     try {
         $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
-        $stmt->execute([$data['email']]);
+        $stmt->execute([$email]);
         $user = $stmt->fetch();
 
-        if ($user && password_verify($data['password'], $user['password'])) {
+        if ($user && password_verify($password, $user['password'])) {
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['user_role'] = $user['role'];
             $_SESSION['user_name'] = $user['name'];
@@ -100,30 +110,25 @@ if ($action === 'login' && $method === 'POST') {
     }
 }
 
-// 2. REGISTER (Optional - secure this in production!)
+// 2. REGISTER (Admin only - add new users from Settings)
 elseif ($action === 'register' && $method === 'POST') {
+    if (empty($_SESSION['user_id']) || empty($_SESSION['user_role']) || $_SESSION['user_role'] !== 'Admin') {
+        http_response_code(403);
+        jsonResponse(false, "Admin access required to add users");
+    }
     $data = getJsonInput();
-    
-    // Basic validation
     if (empty($data['email']) || empty($data['password']) || empty($data['name'])) {
         jsonResponse(false, "Missing required fields");
     }
-
-    // Check if user exists
     $check = $pdo->prepare("SELECT id FROM users WHERE email = ?");
-    $check->execute([$data['email']]);
+    $check->execute([trim($data['email'])]);
     if ($check->rowCount() > 0) {
         jsonResponse(false, "User already exists");
     }
-
-    // Create user
     $hashed_password = password_hash($data['password'], PASSWORD_DEFAULT);
     $stmt = $pdo->prepare("INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)");
-    
-    // Default role is User, unless specified (be careful with allowing Admin reg)
     $role = isset($data['role']) && $data['role'] === 'Admin' ? 'Admin' : 'User';
-    
-    if ($stmt->execute([$data['name'], $data['email'], $hashed_password, $role])) {
+    if ($stmt->execute([trim($data['name']), trim($data['email']), $hashed_password, $role])) {
         jsonResponse(true, "User registered successfully");
     } else {
         http_response_code(500);

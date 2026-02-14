@@ -153,7 +153,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, onLo
       )}
 
       <main className="flex-1 overflow-y-auto flex flex-col relative">
-        <header className="h-24 flex items-center justify-between px-4 sm:px-8 lg:px-12 bg-white border-b border-[#F1F5F9] sticky top-0 z-50">
+        <header className="h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8 bg-white border-b border-slate-200/80 sticky top-0 z-50">
           <div className="flex items-center gap-4 lg:gap-6">
             <button
               onClick={() => setIsMobileMenuOpen(true)}
@@ -192,7 +192,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, onLo
           </div>
         </header>
 
-        <div className="p-4 sm:p-8 lg:p-12 max-w-[1400px] mx-auto w-full">
+        <div className="p-5 sm:p-6 lg:p-8 max-w-[1400px] mx-auto w-full min-h-0">
           {children}
         </div>
       </main>

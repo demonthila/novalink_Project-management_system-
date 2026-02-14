@@ -59,8 +59,21 @@ elseif ($method === 'PUT') {
 }
 
 elseif ($method === 'DELETE') {
-    if (!$id) exit(json_encode(["error" => "ID required"]));
-    $pdo->prepare("DELETE FROM developers WHERE id = ?")->execute([$id]);
-    echo json_encode(["success" => true]);
+    if (!$id) {
+        $body = json_decode(file_get_contents('php://input'), true);
+        if (!empty($body['id'])) $id = (int) $body['id'];
+    }
+    if (!$id) {
+        http_response_code(400);
+        exit(json_encode(["success" => false, "error" => "ID required"]));
+    }
+    try {
+        $pdo->prepare("DELETE FROM project_developers WHERE developer_id = ?")->execute([$id]);
+        $pdo->prepare("DELETE FROM developers WHERE id = ?")->execute([$id]);
+        echo json_encode(["success" => true]);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(["success" => false, "error" => $e->getMessage()]);
+    }
 }
 ?>
