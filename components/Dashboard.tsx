@@ -31,9 +31,11 @@ interface DashboardProps {
   clients: Client[];
   notifications: Notification[];
   onAddProject: () => void;
+  onAddClient: () => void;
+  onViewTeams: () => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ projects, clients, notifications, onAddProject }) => {
+const Dashboard: React.FC<DashboardProps> = ({ projects, clients, notifications, onAddProject, onAddClient, onViewTeams }) => {
   const [metrics, setMetrics] = useState<any>({
     totalRevenue: 0,
     totalExpenses: 0,
@@ -132,19 +134,39 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, clients, notifications,
 
   return (
     <div className="space-y-6 sm:space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 w-full">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 pb-4">
         <div>
-          <h1 className="text-2xl sm:text-[32px] font-black text-[#0F172A] tracking-tighter">Main Dashboard</h1>
-          <p className="text-[#64748B] text-sm sm:text-base mt-1 font-medium italic">Enterprise-grade financial and operational overview.</p>
+          <h1 className="text-3xl sm:text-[38px] font-black text-[#0F172A] tracking-tight leading-none">Dashboard</h1>
+          <p className="text-[#64748B] text-sm sm:text-[15px] mt-3 font-medium opacity-80 italic">Enterprise dynamic overview and management shortcuts.</p>
         </div>
-        <button
-          onClick={handleMasterExport}
-          className="flex items-center justify-center h-[60px] px-10 bg-[#2563EB] text-white rounded-[20px] text-[13px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 active:scale-95 transition-all"
-        >
-          <ICONS.Download />
-          <span className="ml-3">Master Export</span>
-        </button>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-3 p-1.5 bg-slate-100/50 rounded-2xl border border-slate-200/60 transition-all hover:bg-slate-100">
+            <button
+              onClick={onAddProject}
+              className="flex items-center gap-2.5 px-6 py-3 bg-blue-600 text-white rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:bg-blue-700 hover:-translate-y-0.5 transition-all"
+            >
+              <ICONS.Add />
+              <span>Project</span>
+            </button>
+            <button
+              onClick={onAddClient}
+              className="flex items-center gap-2.5 px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl text-[11px] font-black uppercase tracking-widest hover:border-slate-300 hover:bg-white hover:shadow-sm transition-all"
+            >
+              <ICONS.Clients />
+              <span>Partner</span>
+            </button>
+            <button
+              onClick={onViewTeams}
+              className="flex items-center gap-2.5 px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl text-[11px] font-black uppercase tracking-widest hover:border-slate-300 hover:bg-white hover:shadow-sm transition-all"
+            >
+              <ICONS.Teams />
+              <span>Team</span>
+            </button>
+          </div>
+        </div>
       </div>
+
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 sm:gap-6">
         <KPICard label="Total Profit" value={formatCurrency(metrics.totalProfit, metrics.currency)} valueColor={metrics.totalProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'} />
@@ -179,7 +201,7 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, clients, notifications,
               <PieChart>
                 <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="45%" outerRadius={90} innerRadius={40} label>
                   {pieData.map((_, i) => (
-                    <Cell key={i} fill={["#2563EB","#10B981","#F59E0B","#F43F5E"][i % 4]} />
+                    <Cell key={i} fill={["#2563EB", "#10B981", "#F59E0B", "#F43F5E"][i % 4]} />
                   ))}
                 </Pie>
                 <Legend verticalAlign="bottom" />
@@ -197,7 +219,7 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, clients, notifications,
               <LineChart data={monthlyData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
                 <XAxis dataKey="name" tick={{ fill: '#94A3B8' }} />
-                <YAxis tickFormatter={(v)=> (v>=1000? (v/1000)+'k': v)} tick={{ fill: '#94A3B8' }} />
+                <YAxis tickFormatter={(v) => (v >= 1000 ? (v / 1000) + 'k' : v)} tick={{ fill: '#94A3B8' }} />
                 <Tooltip />
                 <Line type="monotone" dataKey="profit" stroke="#10B981" strokeWidth={3} dot={{ r: 3 }} />
               </LineChart>

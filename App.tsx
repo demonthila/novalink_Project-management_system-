@@ -38,16 +38,41 @@ const App: React.FC = () => {
 
   // Check Auth on mount
   useEffect(() => {
-    const savedAuth = localStorage.getItem('it_auth_user');
-    if (savedAuth) {
+    const verifyAuth = async () => {
       try {
-        setCurrentUser(JSON.parse(savedAuth));
-      } catch (e) {
-        console.error("Failed to parse saved auth", e);
-        localStorage.removeItem('it_auth_user');
+        const res = await fetch('/api/auth.php?action=check', { credentials: 'include' });
+        const data = await res.json();
+        if (data.authenticated && data.user) {
+          const user: User = {
+            id: String(data.user.id),
+            name: data.user.name,
+            username: data.user.username,
+            email: data.user.email || '',
+            role: data.user.role,
+            createdAt: new Date().toISOString()
+          };
+          setCurrentUser(user);
+          localStorage.setItem('it_auth_user', JSON.stringify(user));
+        } else {
+          setCurrentUser(null);
+          localStorage.removeItem('it_auth_user');
+        }
+      } catch (err) {
+        console.error("Auth check failed", err);
+        // Fallback to local storage if server is down (optional, but safer to just let it load data later)
+        const savedAuth = localStorage.getItem('it_auth_user');
+        if (savedAuth) {
+          try {
+            setCurrentUser(JSON.parse(savedAuth));
+          } catch {
+            localStorage.removeItem('it_auth_user');
+          }
+        }
       }
-    }
+    };
+    verifyAuth();
   }, []);
+
 
   // Load data only when user is authenticated
   useEffect(() => {
@@ -290,7 +315,10 @@ const App: React.FC = () => {
           clients={clients}
           notifications={notifications}
           onAddProject={() => { setEditingProject(null); setShowProjectModal(true); }}
+          onAddClient={() => setActiveTab('clients')}
+          onViewTeams={() => setActiveTab('teams')}
         />
+
       )}
 
       {activeTab === 'projects' && (

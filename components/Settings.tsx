@@ -288,14 +288,16 @@ const Settings: React.FC<SettingsProps> = ({ users, currentUsername, currentUser
                                 e.preventDefault();
                                 const result = await onEditUser(editingUser.id, {
                                     name: editForm.name,
+                                    username: editForm.username,
                                     email: editForm.email,
                                     password: editForm.password || undefined,
                                     role: editForm.role,
                                 });
                                 if (result) {
                                     setEditingUser(null);
-                                    setEditForm({ name: '', email: '', password: '', role: 'User' });
+                                    setEditForm({ name: '', username: '', email: '', password: '', role: 'Admin' });
                                 }
+
                             }}
                             className="space-y-4"
                         >
@@ -354,7 +356,7 @@ const Settings: React.FC<SettingsProps> = ({ users, currentUsername, currentUser
                             <div className="flex gap-3 pt-4">
                                 <button
                                     type="button"
-                                    onClick={() => { setEditingUser(null); setEditForm({ name: '', email: '', password: '', role: 'User' }); }}
+                                    onClick={() => { setEditingUser(null); setEditForm({ name: '', username: '', email: '', password: '', role: 'Admin' }); }}
                                     className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50"
                                 >
                                     Cancel

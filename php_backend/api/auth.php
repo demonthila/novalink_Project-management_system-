@@ -24,9 +24,10 @@ if ($action === 'login' && $method === 'POST') {
         jsonResponse(false, "Missing credentials");
     }
 
-    // Regular login - check database (try username first, then email)
     try {
-        $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ? OR email = ?");
+        // Case-insensitive lookup for username or email
+
+        $stmt = $pdo->prepare("SELECT * FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)");
         $stmt->execute([$username, $username]);
         $user = $stmt->fetch();
 
@@ -34,16 +35,25 @@ if ($action === 'login' && $method === 'POST') {
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['user_role'] = $user['role'];
             $_SESSION['user_name'] = $user['name'];
+            $_SESSION['user_username'] = $user['username'];
+            $_SESSION['user_email'] = $user['email'];
+            
             jsonResponse(true, "Login successful", ["user" => [
                 "id" => $user['id'], 
                 "name" => $user['name'],
                 "username" => $user['username'],
+                "email" => $user['email'],
                 "role" => $user['role']
             ]]);
         } else {
             http_response_code(401);
-            jsonResponse(false, "Invalid credentials");
+            if (!$user) {
+                jsonResponse(false, "User not found: " . $username);
+            } else {
+                jsonResponse(false, "Incorrect password for: " . $username);
+            }
         }
+
     } catch (PDOException $e) {
         http_response_code(500);
         jsonResponse(false, "Database error: " . $e->getMessage());
@@ -107,6 +117,8 @@ elseif ($action === 'check') {
             "user" => [
                 "id" => $_SESSION['user_id'],
                 "name" => $_SESSION['user_name'],
+                "username" => $_SESSION['user_username'] ?? '',
+                "email" => $_SESSION['user_email'] ?? '',
                 "role" => $_SESSION['user_role']
             ]
         ]);
