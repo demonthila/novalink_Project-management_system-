@@ -26,16 +26,10 @@ define('CRON_SECRET', 'a_long_random_secret');
 
 ## Cron job examples (Hostinger hPanel)
 
-Prefer using CLI PHP cron (most reliable):
+Prefer scheduling server-side tasks for reminders and maintenance. Example: run a custom PHP script (placed in `/home/your_user/public_html/api/`) via CLI cron. For example, to run a weekly profit recalculation:
 
 ```
-/usr/bin/php /home/your_user/public_html/api/sendReminders.php
-```
-
-If your Hostinger setup requires an HTTP call (less secure), use the secret token:
-
-```
-wget -q -O - "https://yourdomain.com/api/sendReminders.php?secret=your_cron_secret" >/dev/null 2>&1
+/usr/bin/php /home/your_user/public_html/api/recalculate_profits.php
 ```
 
 Also add a cron to trigger profit recalculation weekly (optional):
@@ -56,10 +50,10 @@ It returns JSON with `ok` and `details` containing PHP version, DB status, and t
 
 ## Testing email delivery
 
-Use the Settings page `Run Reminders` button or call manually:
+Reminder UI/button has been removed from the Settings page. To test email delivery manually, create a small PHP test script that calls the `mail_helper.php` functions or invoke your reminder script directly from the server with the appropriate secret. Example (from server):
 
 ```
-curl "https://yourdomain.com/api/sendReminders.php?secret=your_cron_secret"
+curl "https://yourdomain.com/api/your_reminder_script.php?secret=your_cron_secret"
 ```
 
-If PHPMailer is not yet installed, the system will try `mail()`; if mail delivery fails, install PHPMailer and set SMTP credentials.
+If PHPMailer is not yet installed, the system falls back to `mail()`; if delivery fails, install PHPMailer and set SMTP credentials as described above.

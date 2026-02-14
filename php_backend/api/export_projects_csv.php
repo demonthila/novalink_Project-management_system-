@@ -23,8 +23,25 @@ try {
     header('Content-Disposition: attachment; filename=projects_export_' . date('Y-m-d') . '.csv');
 
     $out = fopen('php://output', 'w');
-    // Columns
-    fputcsv($out, ['project_id','name','client_name','client_email','status','start_date','end_date','total_revenue','total_profit','developers','additional_costs','payments','notes']);
+    // Columns (match the data columns written below)
+    fputcsv($out, [
+        'project_id',
+        'name',
+        'client_name',
+        'client_email',
+        'status',
+        'start_date',
+        'end_date',
+        'total_revenue',
+        'total_profit',
+        'developer_list',
+        'developer_total_cost',
+        'additional_costs_list',
+        'additional_costs_total',
+        'total_expenses',
+        'payments_list',
+        'notes'
+    ]);
 
     foreach ($projects as $p) {
         $pid = $p['id'];
@@ -32,17 +49,21 @@ try {
         $devStmt->execute([$pid]);
         $devRows = $devStmt->fetchAll(PDO::FETCH_ASSOC);
         $devList = [];
+            $devCostSum = 0;
         foreach ($devRows as $d) {
             $flags = [];
             if ($d['is_advance_paid']) $flags[] = 'advance';
             if ($d['is_final_paid']) $flags[] = 'final';
-            $devList[] = $d['name'] . ' (' . $d['role'] . ') cost:' . $d['cost'] . ' paid:' . implode('|', $flags);
+                $devList[] = $d['name'] . ' (' . $d['role'] . ') cost:' . $d['cost'] . ' paid:' . implode('|', $flags);
+                $devCostSum += (float)$d['cost'];
         }
 
         // additional costs
         $addStmt->execute([$pid]);
         $adds = $addStmt->fetchAll(PDO::FETCH_ASSOC);
         $addList = array_map(function($a){ return $a['description'] . ':' . $a['amount'];}, $adds);
+        $addCostSum = 0;
+        foreach ($adds as $a) { $addCostSum += (float)$a['amount']; }
 
         // payments
         $payStmt->execute([$pid]);
@@ -51,6 +72,9 @@ try {
         foreach ($pays as $pp) {
             $payList[] = '#'.$pp['payment_number'] . '|' . $pp['amount'] . '|' . $pp['due_date'] . '|' . $pp['status'];
         }
+
+        // Total expenses (allocated dev cost + additional costs)
+        $totalExpenses = $devCostSum + $addCostSum;
 
         fputcsv($out, [
             $pid,
@@ -62,8 +86,12 @@ try {
             $p['end_date'],
             $p['total_revenue'],
             $p['total_profit'],
+            // structural columns: developer list, developer_total_cost, additional_costs_list, additional_costs_total, total_expenses, payments_list, notes
             implode(' ; ', $devList),
+            number_format($devCostSum,2,'.',''),
             implode(' ; ', $addList),
+            number_format($addCostSum,2,'.',''),
+            number_format($totalExpenses,2,'.',''),
             implode(' ; ', $payList),
             $p['notes'] ?? ''
         ]);

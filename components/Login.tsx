@@ -62,7 +62,7 @@ const Login: React.FC<{ onLogin: (creds: { email: string; pass: string }) => voi
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
             Security Notice: Admin Credentials Required.
             <br />
-            <span className="text-[#0A69E1] mt-2 block opacity-60">Default: admin / admin123</span>
+            <span className="text-[#0A69E1] mt-2 block opacity-60">If you don’t have login credentials, contact your administrator.</span>
           </p>
         </div>
       </div>

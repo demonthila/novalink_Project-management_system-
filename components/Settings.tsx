@@ -15,7 +15,6 @@ const Settings: React.FC<SettingsProps> = ({ users, onAddUser, onDeleteUser, cur
     const [showAddModal, setShowAddModal] = useState(false);
     const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'User' as 'Admin' | 'User' });
     const [currency, setCurrency] = useState('AUD');
-    const [emailLoading, setEmailLoading] = useState(false);
 
     useEffect(() => {
         const loadSettings = async () => {
@@ -52,24 +51,7 @@ const Settings: React.FC<SettingsProps> = ({ users, onAddUser, onDeleteUser, cur
         }
     };
 
-    const handleTestReminder = async () => {
-        setEmailLoading(true);
-        try {
-            // Using correct file name sendReminders.php
-            const response = await fetch('/api/sendReminders.php?key=stratis_secure_cron_token_123');
-            const data = await response.json();
-            if (data.success) {
-                alert('Reminder emails processed.');
-            } else {
-                alert('Failed to process reminders: ' + (data.error || 'Unknown error'));
-            }
-        } catch (error) {
-            console.error('Email trigger failed:', error);
-            alert('Error triggering email.');
-        } finally {
-            setEmailLoading(false);
-        }
-    };
+    // Reminder/testing endpoints removed from UI per request
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -114,16 +96,9 @@ const Settings: React.FC<SettingsProps> = ({ users, onAddUser, onDeleteUser, cur
                     <div className="space-y-2">
                         <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">Data Management</label>
                         <div className="flex gap-3">
-                            <a
-                                href="/api/backup.php"
-                                download="backup.csv"
-                                className="flex-1 bg-slate-900 text-white font-bold rounded-2xl px-5 py-4 hover:bg-slate-800 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-200"
-                            >
-                                <ICONS.Download />
-                                Download Backup
-                            </a>
                             <button
                                 onClick={async () => {
+                                    const date = new Date().toISOString().slice(0,10);
                                     try {
                                         const res = await fetch('/api/export_projects_csv.php');
                                         if (!res.ok) throw new Error('Export failed');
@@ -131,7 +106,7 @@ const Settings: React.FC<SettingsProps> = ({ users, onAddUser, onDeleteUser, cur
                                         const url = window.URL.createObjectURL(blob);
                                         const a = document.createElement('a');
                                         a.href = url;
-                                        a.download = 'projects_export.csv';
+                                        a.download = `projects_export_${date}.csv`;
                                         document.body.appendChild(a);
                                         a.click();
                                         a.remove();
@@ -146,22 +121,61 @@ const Settings: React.FC<SettingsProps> = ({ users, onAddUser, onDeleteUser, cur
                                 <ICONS.Download />
                                 Export Projects (CSV)
                             </button>
+                            <button
+                                onClick={async () => {
+                                    const date = new Date().toISOString().slice(0,10);
+                                    try {
+                                        const res = await fetch('/api/export_clients_csv.php');
+                                        if (!res.ok) throw new Error('Export failed');
+                                        const blob = await res.blob();
+                                        const url = window.URL.createObjectURL(blob);
+                                        const a = document.createElement('a');
+                                        a.href = url;
+                                        a.download = `clients_export_${date}.csv`;
+                                        document.body.appendChild(a);
+                                        a.click();
+                                        a.remove();
+                                        window.URL.revokeObjectURL(url);
+                                    } catch (err) {
+                                        console.error(err);
+                                        alert('Failed to export clients.');
+                                    }
+                                }}
+                                className="flex-1 bg-white border border-slate-100 text-slate-800 font-bold rounded-2xl px-5 py-4 hover:bg-slate-50 active:scale-95 transition-all flex items-center justify-center gap-2"
+                            >
+                                <ICONS.Download />
+                                Export Clients (CSV)
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    const date = new Date().toISOString().slice(0,10);
+                                    try {
+                                        const res = await fetch('/api/export_developers_csv.php');
+                                        if (!res.ok) throw new Error('Export failed');
+                                        const blob = await res.blob();
+                                        const url = window.URL.createObjectURL(blob);
+                                        const a = document.createElement('a');
+                                        a.href = url;
+                                        a.download = `developers_export_${date}.csv`;
+                                        document.body.appendChild(a);
+                                        a.click();
+                                        a.remove();
+                                        window.URL.revokeObjectURL(url);
+                                    } catch (err) {
+                                        console.error(err);
+                                        alert('Failed to export developers.');
+                                    }
+                                }}
+                                className="flex-1 bg-white border border-slate-100 text-slate-800 font-bold rounded-2xl px-5 py-4 hover:bg-slate-50 active:scale-95 transition-all flex items-center justify-center gap-2"
+                            >
+                                <ICONS.Download />
+                                Export Developers (CSV)
+                            </button>
                         </div>
-                        <p className="text-xs text-slate-400 font-medium px-1">Export full JSON database (CSV).</p>
+                        <p className="text-xs text-slate-400 font-medium px-1">Export structured CSVs for Projects, Clients and Developers.</p>
                     </div>
 
-                    {/* Email Test */}
-                    <div className="space-y-2">
-                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">System Alerts</label>
-                        <button
-                            onClick={handleTestReminder}
-                            disabled={emailLoading}
-                            className="w-full bg-white border-2 border-slate-100 text-slate-600 font-bold rounded-2xl px-5 py-3.5 hover:bg-slate-50 hover:border-slate-200 active:scale-95 transition-all flex items-center justify-center gap-2"
-                        >
-                            {emailLoading ? 'Processing...' : 'Run Reminders'}
-                        </button>
-                        <p className="text-xs text-slate-400 font-medium px-1">Triggers manual backup/payment reminders.</p>
-                    </div>
+                    {/* Email Test removed per request (reminders handled by server cron) */}
                 </div>
             </div>
 
