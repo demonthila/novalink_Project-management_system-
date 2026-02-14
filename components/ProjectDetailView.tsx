@@ -4,6 +4,7 @@ import { Project, Client, Developer } from '../types';
 import { ICONS } from '../constants';
 import { formatCurrency, calculateGrandTotal, calculatePaidAmount, calculateTotalAdditionalCosts } from '../utils';
 import PaymentTracker from './PaymentTracker';
+import { generateProjectInvoice } from '../services/invoiceService';
 
 interface ProjectDetailViewProps {
     project: Project;
@@ -21,18 +22,198 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
     onRefresh
 }) => {
     const client = clients.find(c => c.id === project.client_id);
+    const [isInvoiceModalOpen, setIsInvoiceModalOpen] = React.useState(false);
+
+    // Initialize complex invoice state
+    const [invoiceData, setInvoiceData] = React.useState<any>(null);
+
+    // Populate default data when modal opens
+    React.useEffect(() => {
+        if (isInvoiceModalOpen && !invoiceData) {
+            const unpaidMilestones = (project.payments || []).filter(p => p.status === 'Unpaid');
+            const additionalCosts = (project.additional_costs || []).map(c => ({
+                id: `cost-${c.id}`,
+                type: `Cost: ${c.cost_type}`,
+                description: c.description,
+                amount: Number(c.amount),
+                included: true
+            }));
+
+            const milestoneItems = unpaidMilestones.map(p => ({
+                id: `milestone-${p.id}`,
+                type: `Milestone ${p.payment_number}`,
+                description: `Project Payment Phase ${p.payment_number}`,
+                amount: Number(p.amount),
+                included: true
+            }));
+
+            setInvoiceData({
+                invoiceNumber: `INV-${project.id}-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}`,
+                dueDate: project.end_date || new Date().toISOString().split('T')[0],
+                billedBy: {
+                    name: "Novalink Innovations",
+                    address: "Colombo, Western Province, Sri Lanka",
+                    email: "info@novalinkinnovations.com",
+                    phone: "+94 76 006 8914"
+                },
+                billedTo: {
+                    company: client?.company_name || "Private Client",
+                    name: client?.name || "Authorized Personnel",
+                    email: client?.email || "",
+                    phone: client?.phone || "",
+                    address: "" // Optional addition
+                },
+                items: [...milestoneItems, ...additionalCosts]
+            });
+        }
+    }, [isInvoiceModalOpen, project, client, invoiceData]);
+
+    const handleDownload = () => {
+        setIsInvoiceModalOpen(false);
+        generateProjectInvoice(project, client, invoiceData);
+        setInvoiceData(null); // Reset for next time
+    };
+
+    const toggleItem = (id: string) => {
+        const newItems = invoiceData.items.map((item: any) =>
+            item.id === id ? { ...item, included: !item.included } : item
+        );
+        setInvoiceData({ ...invoiceData, items: newItems });
+    };
+
+    const updateItem = (id: string, field: string, value: any) => {
+        const newItems = invoiceData.items.map((item: any) =>
+            item.id === id ? { ...item, [field]: value } : item
+        );
+        setInvoiceData({ ...invoiceData, items: newItems });
+    };
+
+    const calculateTotal = () => {
+        if (!invoiceData) return 0;
+        return invoiceData.items
+            .filter((i: any) => i.included)
+            .reduce((sum: number, i: any) => sum + i.amount, 0);
+    };
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-md" onClick={onClose}>
             <div
-                className="bg-white sm:rounded-[40px] w-full max-w-6xl h-full sm:h-auto sm:max-h-[92vh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in-95 duration-300 border border-slate-200"
+                className="bg-white sm:rounded-[40px] w-full max-w-6xl h-full sm:h-[94vh] sm:max-h-[94vh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in-95 duration-300 border border-slate-200"
                 onClick={e => e.stopPropagation()}
             >
+                {/* Invoice Finalization Console */}
+                {isInvoiceModalOpen && invoiceData && (
+                    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 sm:p-6 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-300">
+                        <div className="bg-white rounded-[40px] w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col border border-slate-200 animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
+
+                            <div className="px-10 py-7 border-b border-slate-50 flex items-center justify-between bg-white/80 backdrop-blur-md sticky top-0 z-10">
+                                <div className="space-y-1">
+                                    <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Invoice Customization</h3>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Resource Matrix Optimization</p>
+                                </div>
+                                <button onClick={() => setIsInvoiceModalOpen(false)} className="p-2.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all group">
+                                    <svg className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-8 sm:p-10 space-y-10 custom-scrollbar">
+                                <section className="space-y-4">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <div className="w-1 h-3 bg-blue-600 rounded-full" />
+                                        <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-900">Document Protocol</h4>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1.5">
+                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">ID CARD</label>
+                                            <input className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-slate-800 outline-none focus:bg-white focus:border-blue-500 transition-all"
+                                                value={invoiceData.invoiceNumber} onChange={e => setInvoiceData({ ...invoiceData, invoiceNumber: e.target.value })} />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">SETTLEMENT DATE</label>
+                                            <input type="date" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-slate-800 outline-none focus:bg-white focus:border-blue-500 transition-all"
+                                                value={invoiceData.dueDate} onChange={e => setInvoiceData({ ...invoiceData, dueDate: e.target.value })} />
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <section className="space-y-4">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <div className="w-1 h-3 bg-blue-600 rounded-full" />
+                                            <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-900">Issuer Details</h4>
+                                        </div>
+                                        <div className="space-y-3 bg-slate-50/50 p-5 rounded-3xl border border-slate-100">
+                                            <input className="w-full bg-transparent text-xs font-black text-slate-900 border-b border-slate-200 focus:border-blue-500 outline-none pb-1.5 transition-colors"
+                                                placeholder="Company Name" value={invoiceData.billedBy.name} onChange={e => setInvoiceData({ ...invoiceData, billedBy: { ...invoiceData.billedBy, name: e.target.value } })} />
+                                            <input className="w-full bg-transparent text-[10px] font-bold text-slate-500 border-b border-slate-200 focus:border-blue-500 outline-none pb-1.5 transition-colors"
+                                                placeholder="Address" value={invoiceData.billedBy.address} onChange={e => setInvoiceData({ ...invoiceData, billedBy: { ...invoiceData.billedBy, address: e.target.value } })} />
+                                        </div>
+                                    </section>
+
+                                    <section className="space-y-4">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <div className="w-1 h-3 bg-blue-600 rounded-full" />
+                                            <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-900">Client Info</h4>
+                                        </div>
+                                        <div className="space-y-3 bg-slate-50/50 p-5 rounded-3xl border border-slate-100">
+                                            <input className="w-full bg-transparent text-xs font-black text-slate-900 border-b border-slate-200 focus:border-blue-500 outline-none pb-1.5 transition-colors"
+                                                placeholder="Company Name" value={invoiceData.billedTo.company} onChange={e => setInvoiceData({ ...invoiceData, billedTo: { ...invoiceData.billedTo, company: e.target.value } })} />
+                                            <input className="w-full bg-transparent text-[10px] font-bold text-slate-500 border-b border-slate-200 focus:border-blue-500 outline-none pb-1.5 transition-colors"
+                                                placeholder="Contact Name" value={invoiceData.billedTo.name} onChange={e => setInvoiceData({ ...invoiceData, billedTo: { ...invoiceData.billedTo, name: e.target.value } })} />
+                                        </div>
+                                    </section>
+                                </div>
+
+                                <section className="space-y-4">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-1 h-3 bg-amber-500 rounded-full" />
+                                            <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-900">Line Items</h4>
+                                        </div>
+                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 px-2 py-0.5 rounded">{invoiceData.items.filter((i: any) => i.included).length} Active</span>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {invoiceData.items.map((item: any) => (
+                                            <div key={item.id} className={`p-4 rounded-2xl border transition-all flex items-center justify-between gap-4 ${item.included ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-50/50 border-transparent opacity-40'}`}>
+                                                <div className="flex items-center gap-3 flex-1">
+                                                    <input type="checkbox" checked={item.included} onChange={() => toggleItem(item.id)} className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500/20" />
+                                                    <input className="flex-1 text-[11px] font-bold text-slate-800 bg-transparent border-none outline-none p-0 focus:ring-0"
+                                                        value={item.description} onChange={e => updateItem(item.id, 'description', e.target.value)} />
+                                                </div>
+                                                <input type="number" className="w-20 text-[11px] font-black text-blue-600 bg-transparent border-none outline-none p-0 text-right focus:ring-0"
+                                                    value={item.amount} onChange={e => updateItem(item.id, 'amount', parseFloat(e.target.value) || 0)} />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+
+                                <div className="bg-[#0F172A] rounded-3xl p-6 text-white shadow-xl relative overflow-hidden group">
+                                    <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 blur-2xl rounded-full translate-x-8 -translate-y-8" />
+                                    <div className="flex justify-between items-center mb-1">
+                                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Total Receivable</p>
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-blue-400">{project.currency}</p>
+                                    </div>
+                                    <p className="text-3xl font-black tracking-tighter">{formatCurrency(calculateTotal(), project.currency)}</p>
+                                </div>
+                            </div>
+
+                            <div className="p-6 sm:px-8 border-t border-slate-50 bg-slate-50/30 flex items-center justify-between gap-4 sticky bottom-0 z-10">
+                                <button onClick={() => setIsInvoiceModalOpen(false)} className="text-slate-400 text-[10px] font-black uppercase tracking-widest hover:text-rose-600 transition-all px-4 py-2">Discard</button>
+                                <button onClick={handleDownload} className="flex-1 max-w-[240px] px-6 py-3.5 bg-[#2563EB] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-2">
+                                    <ICONS.Download />
+                                    <span>Download PDF</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+
                 {/* Glassmorphic Header */}
                 <div className="px-8 sm:px-12 py-8 sm:py-10 border-b border-slate-50 flex items-center justify-between sticky top-0 bg-white/80 backdrop-blur-md z-20">
                     <div className="flex items-center gap-6">
-                        <div className="w-16 h-16 rounded-[24px] bg-blue-600 text-white flex items-center justify-center text-2xl font-black shadow-xl shadow-blue-500/20">
-                            {project.name.charAt(0).toUpperCase()}
+                        <div className="w-16 h-16 rounded-[24px] bg-blue-600 text-white flex items-center justify-center text-2xl font-black shadow-xl shadow-blue-500/20 overflow-hidden">
+                            <img src="/logo.png" className="w-full h-full object-cover p-2 bg-white" alt="N" onError={(e: any) => e.target.src = ''} />
                         </div>
                         <div>
                             <div className="flex items-center gap-3">
@@ -53,10 +234,20 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
                             </p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-4 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all">
-                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => setIsInvoiceModalOpen(true)}
+                            className="flex items-center gap-2.5 px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl text-[11px] font-black uppercase tracking-widest hover:border-slate-300 hover:bg-slate-50 transition-all shadow-sm group"
+                        >
+                            <ICONS.Download />
+                            <span>Download Invoice</span>
+                        </button>
+                        <button onClick={onClose} className="p-4 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all">
+                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
                 </div>
+
 
                 <div className="p-8 sm:p-12 space-y-12">
                     {/* Top Level Intelligence Matrix */}

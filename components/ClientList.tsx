@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import { Client, Project } from '../types';
 import { ICONS } from '../constants';
 import { createClient, updateProject } from '../services/api';
+import { toast } from 'react-hot-toast';
+
 // Note: onAdd/onUpdate props in ClientList are usually wrappers around API calls in App.tsx. 
 // However, since App.tsx passes refreshData, we might want to call API here or in App.
 // In App.tsx refactor (Step 141), I passed `onAdd={() => refreshData()}`. 
@@ -83,12 +85,13 @@ const ClientList: React.FC<ClientListProps> = ({ clients, projects, onAdd, onUpd
       if (json.success) {
         setShowModal(false);
         onAdd(); // Trigger refresh
+        toast.success(editingClient ? 'Partner record updated' : 'New partner onboarded');
       } else {
-        alert("Error: " + json.error);
+        toast.error("Error: " + json.error);
       }
     } catch (e) {
       console.error(e);
-      alert("Failed to save client");
+      toast.error("Failed to save client record");
     }
   };
 
@@ -99,12 +102,13 @@ const ClientList: React.FC<ClientListProps> = ({ clients, projects, onAdd, onUpd
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.success) {
         onDelete(id);
+        toast.success('Partner record removed');
       } else {
-        alert(data.error || data.message || "Could not delete client.");
+        toast.error(data.error || data.message || "Could not delete client.");
       }
     } catch (e) {
       console.error(e);
-      alert("Failed to delete client.");
+      toast.error("Failed to delete client.");
     }
   };
 
@@ -222,41 +226,56 @@ const ClientModal = ({ isOpen, onClose, onSubmit, initialData }: any) => {
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-blue-900/20 backdrop-blur-sm">
-      <div className="bg-white rounded-[40px] w-full max-w-2xl max-h-[90vh] overflow-y-auto p-8 shadow-2xl animate-in fade-in zoom-in duration-200 border border-slate-200">
-        <div className="flex items-center justify-between mb-8 sticky top-0 bg-white pb-4 z-10 border-b border-slate-100">
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-md">
+      <div className="bg-white rounded-[40px] w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-300 border border-slate-200 flex flex-col">
+
+        <div className="px-10 py-8 border-b border-slate-50 flex items-center justify-between bg-white">
           <div>
-            <h3 className="text-2xl font-black text-[#0A69E1] tracking-tight">{initialData ? 'Update Partner Profile' : 'Onboard New Partner'}</h3>
+            <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+              {initialData ? 'Update Partner Profile' : 'Onboard New Partner'}
+            </h3>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Strategic relationship management</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><ICONS.Delete /></button>
+          <button onClick={onClose} className="p-2.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all group">
+            <svg className="w-6 h-6 group-hover:rotate-90 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
         </div>
 
-        <form onSubmit={(e) => { e.preventDefault(); onSubmit(formData); }} className="space-y-6">
-          <div className="grid grid-cols-2 gap-6">
+        <form onSubmit={(e) => { e.preventDefault(); onSubmit(formData); }} className="flex-1 overflow-y-auto p-10 space-y-8">
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Full Legal Name</label>
-              <input required className={MODAL_INPUT} value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Legal Name</label>
+              <input required className={MODAL_INPUT} placeholder="Ex: John Harrison" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Organization Name</label>
-              <input className={MODAL_INPUT} value={formData.company_name} onChange={e => setFormData({ ...formData, company_name: e.target.value })} />
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Organization Name</label>
+              <input className={MODAL_INPUT} placeholder="Ex: Acme Dynamics" value={formData.company_name} onChange={e => setFormData({ ...formData, company_name: e.target.value })} />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Professional Email</label>
-              <input type="email" required className={MODAL_INPUT} value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Professional Email</label>
+              <input type="email" required className={MODAL_INPUT} placeholder="Ex: john@acme.com" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Contact Number</label>
-              <input className={MODAL_INPUT} value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Contact Number</label>
+              <input className={MODAL_INPUT} placeholder="Ex: +1 (555) 000-0000" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
             </div>
           </div>
 
-          <div className="flex justify-end gap-6 pt-6 border-t border-slate-100 items-center">
-            <button type="button" onClick={onClose} className="text-slate-400 font-bold uppercase text-[11px] tracking-widest hover:text-[#0A69E1] transition-colors">Cancel</button>
-            <button type="submit" className="flex items-center gap-2 px-6 py-3 bg-[#2563EB] text-white rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:bg-blue-700 hover:-translate-y-0.5 transition-all">Save Records</button>
+          <div className="bg-blue-50/50 p-6 rounded-[28px] border border-blue-100/50">
+            <div className="flex items-center gap-3 text-blue-600 mb-2">
+              <ICONS.Info />
+              <span className="text-[10px] font-black uppercase tracking-widest">Onboarding Protocol</span>
+            </div>
+            <p className="text-xs font-medium text-slate-500 leading-relaxed italic">Registered entities will be accessible for project assignment and resource allocation within the Stratis Intelligence Engine.</p>
+          </div>
+
+          <div className="flex justify-end gap-6 pt-6 border-t border-slate-50 items-center mt-4">
+            <button type="button" onClick={onClose} className="text-slate-400 font-bold uppercase text-[11px] tracking-widest hover:text-rose-600 transition-colors px-4 py-2">Discard</button>
+            <button type="submit" className="flex items-center gap-2.5 px-8 py-4 bg-[#2563EB] text-white rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-xl shadow-blue-500/20 hover:bg-blue-700 hover:-translate-y-1 active:scale-95 transition-all">Commit Records</button>
           </div>
 
         </form>

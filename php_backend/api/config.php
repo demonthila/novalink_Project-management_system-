@@ -54,9 +54,24 @@ try {
 
 // 4. Helper Function: Get JSON Input
 function getJsonInput() {
-    $input = json_decode(file_get_contents("php://input"), true);
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        return [];
+    // Attempt 1: Standard PHP input stream
+    $rawInput = file_get_contents("php://input");
+    $GLOBALS['debug_raw_body'] = $rawInput;
+    $input = json_decode($rawInput, true);
+    $GLOBALS['debug_json_error'] = json_last_error_msg();
+    
+    // Attempt 2: Check global GLOBALS if available
+    if (empty($input) && isset($GLOBALS['HTTP_RAW_POST_DATA'])) {
+        $input = json_decode($GLOBALS['HTTP_RAW_POST_DATA'], true);
     }
-    return $input;
+
+    // Attempt 3: Standard POST 
+    if (empty($input) && !empty($_POST)) {
+        $input = $_POST;
+    }
+
+    // Store raw length for debugging
+    $GLOBALS['debug_raw_len'] = strlen($rawInput);
+    
+    return $input ?? [];
 }

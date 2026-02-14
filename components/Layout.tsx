@@ -35,15 +35,16 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, onLo
 
   const SidebarContent = () => (
     <>
-      <div className="px-10 py-12 flex items-center justify-between">
+      <div className="px-10 py-12 flex items-center justify-between sticky top-0 bg-white z-10">
         <SIDEBAR_LOGO />
         <button
           onClick={() => setIsMobileMenuOpen(false)}
-          className="lg:hidden p-2 hover:bg-slate-50 rounded-xl"
+          className="lg:hidden p-3 bg-slate-50 text-slate-400 hover:text-rose-500 rounded-xl transition-colors"
         >
-          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
       </div>
+
 
       <div className="flex-1 px-6 overflow-y-auto">
         <div className="mb-6 px-4 text-[10px] font-black text-[#94A3B8] uppercase tracking-[0.3em]">

@@ -147,21 +147,21 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, clients, notifications,
               className="flex items-center gap-2.5 px-6 py-3 bg-blue-600 text-white rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:bg-blue-700 hover:-translate-y-0.5 transition-all"
             >
               <ICONS.Add />
-              <span>Project</span>
+              <span>Add newProject</span>
             </button>
             <button
               onClick={onAddClient}
               className="flex items-center gap-2.5 px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl text-[11px] font-black uppercase tracking-widest hover:border-slate-300 hover:bg-white hover:shadow-sm transition-all"
             >
               <ICONS.Clients />
-              <span>Partner</span>
+              <span>Add new Partner</span>
             </button>
             <button
               onClick={onViewTeams}
               className="flex items-center gap-2.5 px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl text-[11px] font-black uppercase tracking-widest hover:border-slate-300 hover:bg-white hover:shadow-sm transition-all"
             >
               <ICONS.Teams />
-              <span>add new Dev</span>
+              <span>Add new Dev</span>
             </button>
           </div>
         </div>
@@ -170,7 +170,7 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, clients, notifications,
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 sm:gap-6">
         <KPICard label="Total Profit" value={formatCurrency(metrics.totalProfit, metrics.currency)} valueColor={metrics.totalProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'} />
-        <KPICard label="Active Projects" value={String(metrics.totalProjects && statusDistribution['Active'] ? statusDistribution['Active'] : (metrics.totalProjects || 0))} />
+        <KPICard label="Active Projects" value={String(statusDistribution['Active'] || 0)} />
         <KPICard label="Completed Projects" value={String(statusDistribution['Completed'] || 0)} />
         <KPICard label="Total Revenue" value={formatCurrency(metrics.totalRevenue, metrics.currency)} />
       </div>

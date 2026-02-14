@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import { Developer } from '../types';
 import { ICONS } from '../constants';
+import { toast } from 'react-hot-toast';
+
 
 const MODAL_INPUT = "w-full h-[52px] px-5 bg-white border border-[#E2E8F0] rounded-xl text-[14px] font-bold text-[#0F172A] outline-none focus:border-[#2563EB] focus:ring-4 focus:ring-blue-500/5 transition-all placeholder:text-[#94A3B8] placeholder:font-medium";
 
@@ -57,12 +59,13 @@ const DeveloperList: React.FC<DeveloperListProps> = ({ developers, onAdd, onUpda
       if (json.success) {
         setShowModal(false);
         onAdd(); // Refresh
+        toast.success(editingDev ? 'Team member updated' : 'New developer onboarded');
       } else {
-        alert("Error: " + (json.error || "Failed"));
+        toast.error("Error: " + (json.error || "Failed"));
       }
     } catch (e) {
       console.error(e);
-      alert("Failed to save developer");
+      toast.error("Failed to save developer record");
     }
   };
 
@@ -73,12 +76,13 @@ const DeveloperList: React.FC<DeveloperListProps> = ({ developers, onAdd, onUpda
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.success) {
         onDelete(id);
+        toast.success('Team member removed');
       } else {
-        alert(data.error || data.message || "Could not delete developer.");
+        toast.error(data.error || data.message || "Could not delete developer.");
       }
     } catch (e) {
       console.error(e);
-      alert("Failed to delete developer.");
+      toast.error("Failed to delete developer.");
     }
   };
 
@@ -196,62 +200,71 @@ const DeveloperModal = ({ isOpen, onClose, onSubmit, initialData }: any) => {
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-blue-900/20 backdrop-blur-sm">
-      <div className="bg-white rounded-[32px] w-full max-w-2xl max-h-[90vh] overflow-y-auto p-8 shadow-2xl animate-in fade-in zoom-in duration-200 border border-slate-200">
-        <div className="flex items-center justify-between mb-8 sticky top-0 bg-white pb-4 z-10 border-b border-slate-100">
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-md">
+      <div className="bg-white rounded-[40px] w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-300 border border-slate-200 flex flex-col">
+
+        <div className="px-10 py-8 border-b border-slate-50 flex items-center justify-between bg-white">
           <div>
-            <h3 className="text-2xl font-black text-[#0A69E1] tracking-tight">{initialData ? 'Update Profile' : 'Developer Onboarding'}</h3>
+            <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+              {initialData ? 'Refine Talent Profile' : 'Onboard New Talent'}
+            </h3>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Human capital acquisition & deployment</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><ICONS.Delete /></button>
+          <button onClick={onClose} className="p-2.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all group">
+            <svg className="w-6 h-6 group-hover:rotate-90 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
         </div>
 
-        <form onSubmit={e => { e.preventDefault(); onSubmit(formData); }} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Full Legal Name</label>
-              <input required placeholder="Full name" className={MODAL_INPUT} name="full_name" value={formData.full_name} onChange={e => setFormData({ ...formData, full_name: e.target.value })} />
+        <form onSubmit={e => { e.preventDefault(); onSubmit(formData); }} className="flex-1 overflow-y-auto p-10 space-y-10">
+
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Legal Name</label>
+                <input required placeholder="Ex: Harrison Ford" className={MODAL_INPUT} name="full_name" value={formData.full_name} onChange={e => setFormData({ ...formData, full_name: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Identity/National ID</label>
+                <input required placeholder="Ex: 901234567V" className={MODAL_INPUT} name="id_card_number" value={formData.id_card_number} onChange={e => setFormData({ ...formData, id_card_number: e.target.value })} />
+              </div>
             </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Personal Email</label>
+                <input type="email" placeholder="Ex: personal@gmail.com" className={MODAL_INPUT} name="personal_email" value={formData.personal_email} onChange={e => setFormData({ ...formData, personal_email: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Professional Email</label>
+                <input type="email" required placeholder="Ex: talent@novalink.com" className={MODAL_INPUT} name="company_email" value={formData.company_email} onChange={e => setFormData({ ...formData, company_email: e.target.value })} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Slack/Communication Handle</label>
+                <input placeholder="Ex: @harrison_dev" className={MODAL_INPUT} name="slack" value={formData.slack} onChange={e => setFormData({ ...formData, slack: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Technical Stack (CSV)</label>
+                <input placeholder="Ex: React, Node.js, AWS" className={MODAL_INPUT} name="skills" value={formData.skills} onChange={e => setFormData({ ...formData, skills: e.target.value })} />
+              </div>
+            </div>
+
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ID Card Number</label>
-              <input required placeholder="ID Card Number" className={MODAL_INPUT} name="id_card_number" value={formData.id_card_number} onChange={e => setFormData({ ...formData, id_card_number: e.target.value })} />
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Residential Address</label>
+              <textarea placeholder="Physical location details" className={`${MODAL_INPUT} h-24 py-4 resize-none`} rows={3} name="address" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Operational Briefing/Notes</label>
+              <textarea placeholder="Performance notes or special instructions" className={`${MODAL_INPUT} h-24 py-4 resize-none`} rows={3} name="comments" value={formData.comments} onChange={e => setFormData({ ...formData, comments: e.target.value })} />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Personal Email</label>
-              <input type="email" placeholder="Personal Email" className={MODAL_INPUT} name="personal_email" value={formData.personal_email} onChange={e => setFormData({ ...formData, personal_email: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Company Email</label>
-              <input type="email" required placeholder="Company Email" className={MODAL_INPUT} name="company_email" value={formData.company_email} onChange={e => setFormData({ ...formData, company_email: e.target.value })} />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tech Slack Username</label>
-              <input placeholder="Slack username" className={MODAL_INPUT} name="slack" value={formData.slack} onChange={e => setFormData({ ...formData, slack: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Skills (comma separated)</label>
-              <input placeholder="e.g. React, PHP" className={MODAL_INPUT} name="skills" value={formData.skills} onChange={e => setFormData({ ...formData, skills: e.target.value })} />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Address</label>
-            <textarea placeholder="Address" className={MODAL_INPUT} rows={3} name="address" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">More Comments</label>
-            <textarea placeholder="More comments" className={MODAL_INPUT} rows={3} name="comments" value={formData.comments} onChange={e => setFormData({ ...formData, comments: e.target.value })} />
-          </div>
-
-          <div className="flex justify-end gap-6 pt-6 border-t border-slate-100 items-center">
-            <button type="button" onClick={onClose} className="text-slate-400 font-bold uppercase text-[11px] tracking-widest hover:text-[#0A69E1] transition-colors">Discard</button>
-            <button type="submit" className="flex items-center gap-2 px-6 py-3 bg-[#2563EB] text-white rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:bg-blue-700 hover:-translate-y-0.5 transition-all">Save Developer</button>
+          <div className="flex justify-end gap-6 pt-6 border-t border-slate-50 items-center">
+            <button type="button" onClick={onClose} className="text-slate-400 font-bold uppercase text-[11px] tracking-widest hover:text-rose-600 transition-colors px-4 py-2">Discard</button>
+            <button type="submit" className="flex items-center gap-2.5 px-8 py-4 bg-[#2563EB] text-white rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-xl shadow-blue-500/20 hover:bg-blue-700 hover:-translate-y-1 active:scale-95 transition-all">Onboard Specialist</button>
           </div>
         </form>
       </div>

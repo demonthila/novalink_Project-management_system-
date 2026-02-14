@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { User } from '../types';
 import { ICONS } from '../constants';
 import { fetchSettings, updateSettings } from '../services/api';
+import { toast } from 'react-hot-toast';
 
 interface SettingsProps {
     users: User[];
@@ -22,6 +23,7 @@ const Settings: React.FC<SettingsProps> = ({ users, currentUsername, currentUser
     const [newUser, setNewUser] = useState({ name: '', username: '', email: '', password: '', role: 'Admin' as 'Superadmin' | 'Admin' | 'User' });
     const [currency, setCurrency] = useState('AUD');
     const [demoAdminExists, setDemoAdminExists] = useState<boolean | null>(null);
+    const [reminderEmail, setReminderEmail] = useState('novalinkhelp@gmail.com');
 
 
     useEffect(() => {
@@ -31,6 +33,9 @@ const Settings: React.FC<SettingsProps> = ({ users, currentUsername, currentUser
                 if (settings?.currency) {
                     setCurrency(settings.currency);
                     localStorage.setItem('stratis_currency', settings.currency);
+                }
+                if (settings?.reminder_email) {
+                    setReminderEmail(settings.reminder_email);
                 }
             } catch (error) {
                 console.error("Failed to load settings", error);
@@ -66,8 +71,20 @@ const Settings: React.FC<SettingsProps> = ({ users, currentUsername, currentUser
         window.dispatchEvent(new Event('stratis-currency-change'));
         try {
             await updateSettings({ currency: v });
+            toast.success(`Currency updated to ${v}`);
         } catch (error) {
-            console.error("Failed to save currency", error);
+            toast.error("Failed to save currency");
+        }
+    };
+
+    const handleReminderEmailChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const v = e.target.value;
+        setReminderEmail(v);
+        try {
+            await updateSettings({ reminder_email: v });
+            toast.success('Reminder email updated');
+        } catch (error) {
+            toast.error("Failed to save reminder email");
         }
     };
 
@@ -113,6 +130,25 @@ const Settings: React.FC<SettingsProps> = ({ users, currentUsername, currentUser
                             <option value="CAD">CAD ($)</option>
                         </select>
                         <p className="text-xs text-slate-400 mt-1">Used for reports and amounts.</p>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Reminders Email</label>
+                        <div className="relative">
+                            <input
+                                type="email"
+                                value={reminderEmail}
+                                onChange={handleReminderEmailChange}
+                                className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                                placeholder="novalinkhelp@gmail.com"
+                            />
+                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                </svg>
+                            </div>
+                        </div>
+                        <p className="text-xs text-slate-400 mt-1 text-emerald-600 font-bold">System notifications will be routed here.</p>
                     </div>
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Export data</label>

@@ -28,6 +28,7 @@ export interface ProjectDeveloper {
 export interface AdditionalCost {
   id?: number;
   project_id?: number;
+  cost_type?: string;
   description: string;
   amount: number;
 }

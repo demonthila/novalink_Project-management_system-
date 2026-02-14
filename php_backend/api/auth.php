@@ -17,11 +17,13 @@ function jsonResponse($success, $message, $data = []) {
 // 1. LOGIN
 if ($action === 'login' && $method === 'POST') {
     $data = getJsonInput();
-    $username = isset($data['username']) ? trim((string) $data['username']) : '';
+    // Accept 'username' or 'email' key for the login identifier
+    $username = $data['username'] ?? $data['email'] ?? '';
+    $username = trim((string)$username);
     $password = isset($data['password']) ? trim((string) $data['password']) : '';
 
     if ($username === '' || $password === '') {
-        jsonResponse(false, "Missing credentials");
+        jsonResponse(false, "Authentication failure: Credentials not recognized.");
     }
 
     try {

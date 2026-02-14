@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 
 export const APP_NAME = "NovaLink";
 
-export const LOGO = () => {
+export const LOGO = ({ className = "h-[43px] w-auto" }: { className?: string }) => {
   const [imageError, setImageError] = useState(false);
 
   return (
@@ -11,27 +11,25 @@ export const LOGO = () => {
       {!imageError ? (
         <img
           src="/logo.png"
-          alt="NovaLink Innovations"
-          className="h-[43px] w-auto object-contain"
+          alt="NovaLink"
+          className={`${className} object-contain`}
           onError={() => setImageError(true)}
         />
       ) : (
-        <>
+        <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-[#0A69E1] rounded-xl flex items-center justify-center shadow-md shadow-blue-500/20">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M19 3H5C3.89543 3 3 3.89543 3 5V19C3 20.1046 3.89543 21 5 21H19C20.1046 21 21 20.1046 21 19V5C21 3.89543 20.1046 3 19 3Z" stroke="white" strokeWidth="0" fill="transparent" />
-              <path d="M7 7V17L12 12L17 7V17" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <span className="text-white font-black text-xl">N</span>
           </div>
           <div className="flex flex-col">
-            <span className="text-2xl font-bold tracking-tight text-[#0F172A] leading-none">NovaLink</span>
-            <span className="text-[10px] font-medium text-slate-400 uppercase tracking-[0.2em] leading-tight">Innovations</span>
+            <span className="text-2xl font-black tracking-tight text-[#0F172A] leading-none">NovaLink</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-tight">Innovations</span>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
 };
+
 
 export const SIDEBAR_LOGO = () => <LOGO />;
 

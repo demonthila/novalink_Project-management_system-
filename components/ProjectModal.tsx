@@ -138,245 +138,270 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-md">
       <div className="bg-white sm:rounded-[40px] w-full max-w-4xl h-full sm:h-auto sm:max-h-[92vh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in-95 duration-300">
 
-        <div className="px-8 sm:px-12 py-8 sm:py-10 border-b border-slate-50 flex items-center justify-between sticky top-0 bg-white/80 backdrop-blur-md z-20">
+        <div className="px-8 sm:px-12 py-8 border-b border-slate-50 flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur-md z-[110]">
           <div>
             <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
               {initialData ? 'Update Deployment' : 'Project Onboarding'}
             </h2>
-            <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-1">Resource allocation & Financial Matrix</p>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-[10px] text-blue-600 font-black uppercase tracking-widest bg-blue-50 px-2 py-0.5 rounded-md leading-none">Resource Matrix</p>
+              <div className="w-1 h-1 rounded-full bg-slate-200" />
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none">V2.4 Enterprise</p>
+            </div>
           </div>
-          <button onClick={onClose} className="p-3 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all">
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+          <button onClick={onClose} className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all group">
+            <svg className="w-6 h-6 group-hover:rotate-90 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
 
-        <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="px-6 sm:px-12 py-6 sm:py-10 space-y-6 sm:space-y-10">
+        <div className="p-4 sm:p-12 overflow-y-auto max-h-[calc(92vh-100px)]">
+          <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-12">
 
-          {/* Financial Summary */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <FinancialWidget label="Project Profit" value={formatCurrency(financialSummary.profit, formData.currency)} color="emerald" sub={`${financialSummary.profitMargin.toFixed(1)}% Margin`} />
-            <FinancialWidget label="Technical Spend" value={formatCurrency(financialSummary.devCosts, formData.currency)} color="blue" sub={`${formData.developers.length} Developers`} />
-            <FinancialWidget label="Additional Costs" value={formatCurrency(financialSummary.additionalCosts, formData.currency)} color="amber" sub="External Costs" />
-          </div>
-
-          <div className={SECTION_CONTAINER}>
-            <div className={SECTION_HEADER}>
-              <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600">
-                <ICONS.Info />
-              </div>
-              <div>
-                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-800 leading-none">Project Identity</h3>
-                <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">Core meta-data and taxonomy</p>
-              </div>
+            {/* Financial Summary */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              <FinancialWidget label="Net Impact" value={formatCurrency(financialSummary.profit, formData.currency)} color="emerald" sub={`${financialSummary.profitMargin.toFixed(1)}% Yield`} />
+              <FinancialWidget label="Resource Burn" value={formatCurrency(financialSummary.devCosts, formData.currency)} color="blue" sub={`${formData.developers.length} Assigned`} />
+              <FinancialWidget label="Operational Cost" value={formatCurrency(financialSummary.additionalCosts, formData.currency)} color="amber" sub="External assets" />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
-              <div className="space-y-1">
-                <label className={LABEL_CLASSES}>Project Name</label>
-                <input required className={INPUT_CLASSES} value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
-              </div>
-              <div className="space-y-1">
-                <label className={LABEL_CLASSES}>Status</label>
-                <select className={INPUT_CLASSES} value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })}>
-                  <option value="Pending">Pending</option>
-                  <option value="Active">Active</option>
-                  <option value="Completed">Completed</option>
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className={LABEL_CLASSES}>Client</label>
-                <select
-                  required
-                  className={INPUT_CLASSES}
-                  value={formData.client_id ? String(formData.client_id) : ""}
-                  onChange={e => setFormData({ ...formData, client_id: e.target.value })}
-                >
-                  <option value="">Select Client</option>
-                  {Array.isArray(clients) && clients.length > 0 ? (
-                    clients.map(c => (
-                      <option key={String(c.id)} value={String(c.id)}>
-                        {c.company_name} ({c.name})
-                      </option>
-                    ))
-                  ) : (
-                    <option disabled>No clients available</option>
-                  )}
-                </select>
-                {Array.isArray(clients) && clients.length === 0 && (
-                  <p className="text-xs text-red-500 mt-1 italic font-medium">Please add a partner/client first.</p>
-                )}
-              </div>
-              <div className="space-y-1">
-                <label className={LABEL_CLASSES}>Total Revenue (Contract Value)</label>
-                <input type="number" className={INPUT_CLASSES} value={formData.total_revenue || ''} onChange={e => setFormData({ ...formData, total_revenue: parseFloat(e.target.value) || 0 })} />
-              </div>
-              <div className="space-y-1">
-                <label className={LABEL_CLASSES}>Start Date</label>
-                <input type="date" className={INPUT_CLASSES} value={formData.start_date} onChange={e => setFormData({ ...formData, start_date: e.target.value })} />
-              </div>
-              <div className="space-y-1">
-                <label className={LABEL_CLASSES}>End Date (Deadline)</label>
-                <input type="date" className={INPUT_CLASSES} value={formData.end_date} onChange={e => setFormData({ ...formData, end_date: e.target.value })} />
-              </div>
-            </div>
-          </div>
-
-          {/* Developers */}
-          <div className={SECTION_CONTAINER}>
-            <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-50">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600">
-                  <ICONS.Teams />
+            <div className={SECTION_CONTAINER}>
+              <div className={SECTION_HEADER}>
+                <div className="w-12 h-12 rounded-[14px] bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
+                  <ICONS.Info />
                 </div>
                 <div>
-                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-800 leading-none">Human Resources</h3>
-                  <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">Squad allocation & technical payout</p>
+                  <h3 className="text-sm font-black uppercase tracking-[0.2em] text-[#0F172A]">Project Protocol</h3>
+                  <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider italic">Primary identification & taxonomy</p>
                 </div>
               </div>
-              <button type="button" onClick={handleAddDeveloper} className="px-4 py-2 bg-indigo-50 text-indigo-600 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-indigo-100 transition-colors">+ Assign</button>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-1.5">
+                  <label className={LABEL_CLASSES}>Mission Name</label>
+                  <input required className={INPUT_CLASSES} placeholder="Ex: Cloud Infrastructure Overhaul" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className={LABEL_CLASSES}>Protocol Status</label>
+                  <select className={INPUT_CLASSES} value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })}>
+                    <option value="Pending">Pending</option>
+                    <option value="Active">Active</option>
+                    <option value="Completed">Completed</option>
+                    <option value="On Hold">On Hold</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className={LABEL_CLASSES}>Partner/Client</label>
+                  <select
+                    required
+                    className={INPUT_CLASSES}
+                    value={formData.client_id ? String(formData.client_id) : ""}
+                    onChange={e => setFormData({ ...formData, client_id: e.target.value })}
+                  >
+                    <option value="">Select Authorized Partner</option>
+                    {Array.isArray(clients) && clients.length > 0 ? (
+                      clients.map(c => (
+                        <option key={String(c.id)} value={String(c.id)}>
+                          {c.company_name} - {c.name}
+                        </option>
+                      ))
+                    ) : (
+                      <option disabled>No partners available</option>
+                    )}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className={LABEL_CLASSES}>Contractual Value</label>
+                  <div className="relative">
+                    <input type="number" className={INPUT_CLASSES} placeholder="0.00" value={formData.total_revenue || ''} onChange={e => setFormData({ ...formData, total_revenue: parseFloat(e.target.value) || 0 })} />
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-1 rounded">CURRENCY: {formData.currency}</div>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className={LABEL_CLASSES}>Commencement Date</label>
+                  <input type="date" className={INPUT_CLASSES} value={formData.start_date} onChange={e => setFormData({ ...formData, start_date: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className={LABEL_CLASSES}>Target Milestone (Deadline)</label>
+                  <input type="date" className={INPUT_CLASSES} value={formData.end_date} onChange={e => setFormData({ ...formData, end_date: e.target.value })} />
+                </div>
+              </div>
             </div>
 
-            <div className="space-y-4">
-              {formData.developers.map((dev: any, idx: number) => (
-                <div key={idx} className="p-6 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col sm:flex-row gap-4 sm:items-end">
-                  <div className="flex-1 space-y-1">
-                    <label className={LABEL_CLASSES}>Developer</label>
-                    <select
-                      required
-                      className={INPUT_CLASSES}
-                      value={dev.id ? String(dev.id) : ""}
-                      onChange={e => handleUpdateDeveloper(idx, 'id', e.target.value)}
-                    >
-                      <option value="">Select Developer</option>
-                      {Array.isArray(developers) && developers.map(d => (
-                        <option key={String(d.id)} value={String(d.id)}>
-                          {d.name} ({d.role})
-                        </option>
-                      ))}
-                    </select>
+            {/* Developers */}
+            <div className={SECTION_CONTAINER}>
+              <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-50">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-[14px] bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
+                    <ICONS.Teams />
                   </div>
-                  <div className="flex-1 space-y-1">
-                    <label className={LABEL_CLASSES}>Cost for Project</label>
-                    <input type="number" className={INPUT_CLASSES} value={dev.cost || ''} onChange={e => handleUpdateDeveloper(idx, 'cost', parseFloat(e.target.value) || 0)} />
+                  <div>
+                    <h3 className="text-sm font-black uppercase tracking-[0.2em] text-[#0F172A]">Talent Deployment</h3>
+                    <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider italic">Squad allocation & technical payout</p>
                   </div>
-                  <div className="flex-1 space-y-1">
-                    <label className={LABEL_CLASSES}>Developer Payments</label>
-                    <div className="flex items-center gap-3">
-                      <label className="flex items-center gap-2 text-sm">
-                        <input type="checkbox" checked={!!dev.is_advance_paid} onChange={e => handleUpdateDeveloper(idx, 'is_advance_paid', e.target.checked)} />
-                        <span className="text-xs">Advance (40%)</span>
-                      </label>
-                      <label className="flex items-center gap-2 text-sm">
-                        <input type="checkbox" checked={!!dev.is_final_paid} onChange={e => handleUpdateDeveloper(idx, 'is_final_paid', e.target.checked)} />
-                        <span className="text-xs">Final (60%)</span>
-                      </label>
-                      <div className="ml-auto text-xs font-bold text-slate-600">
-                        {formatCurrency(((dev.is_advance_paid ? dev.cost * 0.4 : 0) + (dev.is_final_paid ? dev.cost * 0.6 : 0)) || 0, formData.currency)} paid
+                </div>
+                <button type="button" onClick={handleAddDeveloper} className="px-5 py-2.5 bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm active:scale-95">Assign Staff</button>
+              </div>
+
+              <div className="space-y-6">
+                {formData.developers.map((dev: any, idx: number) => (
+                  <div key={idx} className="p-8 bg-slate-50/50 rounded-[28px] border border-slate-100/80 flex flex-col xl:flex-row gap-6 xl:items-end group hover:bg-white hover:border-indigo-100 transition-all duration-300">
+                    <div className="flex-1 space-y-1.5">
+                      <label className={LABEL_CLASSES}>Member Profile</label>
+                      <select
+                        required
+                        className={INPUT_CLASSES}
+                        value={dev.id ? String(dev.id) : ""}
+                        onChange={e => handleUpdateDeveloper(idx, 'id', e.target.value)}
+                      >
+                        <option value="">Select Talent</option>
+                        {Array.isArray(developers) && developers.map(d => (
+                          <option key={String(d.id)} value={String(d.id)}>
+                            {d.name} — {d.role}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="w-full xl:w-48 space-y-1.5">
+                      <label className={LABEL_CLASSES}>Budgeted Cost</label>
+                      <input type="number" className={INPUT_CLASSES} placeholder="0.00" value={dev.cost || ''} onChange={e => handleUpdateDeveloper(idx, 'cost', parseFloat(e.target.value) || 0)} />
+                    </div>
+                    <div className="flex-1 space-y-1.5">
+                      <label className={LABEL_CLASSES}>Payment Milestones</label>
+                      <div className="h-12 flex items-center gap-6 px-4 bg-white border border-slate-100 rounded-xl">
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer select-none">
+                          <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/20" checked={!!dev.is_advance_paid} onChange={e => handleUpdateDeveloper(idx, 'is_advance_paid', e.target.checked)} />
+                          <span>Advance (40%)</span>
+                        </label>
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer select-none">
+                          <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/20" checked={!!dev.is_final_paid} onChange={e => handleUpdateDeveloper(idx, 'is_final_paid', e.target.checked)} />
+                          <span>Maturity (60%)</span>
+                        </label>
+                        <div className="ml-auto text-[10px] font-black text-emerald-600 uppercase tracking-wider bg-emerald-50 px-2 py-1 rounded">
+                          {formatCurrency(((dev.is_advance_paid ? dev.cost * 0.4 : 0) + (dev.is_final_paid ? dev.cost * 0.6 : 0)) || 0, formData.currency)} DISBURSED
+                        </div>
                       </div>
                     </div>
+                    <button type="button" onClick={() => handleRemoveDeveloper(idx)} className="p-3 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all h-12 w-12 flex items-center justify-center shadow-sm">
+                      <ICONS.Delete />
+                    </button>
                   </div>
-                  <button type="button" onClick={() => handleRemoveDeveloper(idx)} className="p-3 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all h-[52px] flex items-center justify-center">
-                    <ICONS.Delete />
-                  </button>
-                </div>
-              ))}
-              {formData.developers.length === 0 && <p className="text-center text-slate-400 font-medium text-sm">No developers assigned.</p>}
+                ))}
+                {formData.developers.length === 0 && (
+                  <div className="py-12 border-2 border-dashed border-slate-100 rounded-[32px] flex flex-col items-center justify-center text-slate-400">
+                    <div className="p-3 bg-slate-50 rounded-full mb-3"><ICONS.Teams /></div>
+                    <p className="font-bold text-sm">No specialists assigned to this project.</p>
+                    <p className="text-[10px] uppercase font-black tracking-widest mt-1">Authorized personnel only</p>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* Additional Costs */}
-          <div className={SECTION_CONTAINER}>
-            <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-50">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600">
-                  <ICONS.Finances />
+            {/* Additional Costs */}
+            <div className={SECTION_CONTAINER}>
+              <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-50">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-[14px] bg-amber-500 flex items-center justify-center text-white shadow-lg shadow-amber-500/20">
+                    <ICONS.Finances />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black uppercase tracking-[0.2em] text-[#0F172A]">Operational Overheads</h3>
+                    <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider italic">Third-party assets & contingencies</p>
+                  </div>
+                </div>
+                <button type="button" onClick={() => setFormData({ ...formData, additional_costs: [...formData.additional_costs, { cost_type: 'Third Party Cost', description: '', amount: 0 }] })} className="px-5 py-2.5 bg-amber-50 text-amber-700 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-amber-500 hover:text-white transition-all shadow-sm active:scale-95">Add Expense</button>
+              </div>
+
+              <div className="space-y-4">
+                {formData.additional_costs.map((cost: any, idx: number) => (
+                  <div key={idx} className="p-8 bg-slate-50/50 rounded-[28px] border border-slate-100/80 flex flex-col md:flex-row gap-6 md:items-end group hover:bg-white hover:border-amber-100 transition-all duration-300">
+                    <div className="w-full md:w-64 space-y-1.5">
+                      <label className={LABEL_CLASSES}>Ledger Type</label>
+                      <select
+                        required
+                        className={INPUT_CLASSES}
+                        value={cost.cost_type || 'Third Party Cost'}
+                        onChange={e => {
+                          const newCosts = [...formData.additional_costs];
+                          newCosts[idx] = { ...newCosts[idx], cost_type: e.target.value };
+                          setFormData({ ...formData, additional_costs: newCosts });
+                        }}
+                      >
+                        <option value="Third Party Cost">Critical Resource</option>
+                        <option value="Revision Cost">Service Fee</option>
+                        <option value="Custom">Other Expense</option>
+                      </select>
+                    </div>
+                    <div className="flex-[2] space-y-1.5">
+                      <label className={LABEL_CLASSES}>Journal Description</label>
+                      <input
+                        required
+                        placeholder="Ex: API Gateway Subscription"
+                        className={INPUT_CLASSES}
+                        value={cost.description}
+                        onChange={e => {
+                          const newCosts = [...formData.additional_costs];
+                          newCosts[idx] = { ...newCosts[idx], description: e.target.value };
+                          setFormData({ ...formData, additional_costs: newCosts });
+                        }}
+                      />
+                    </div>
+                    <div className="flex-1 space-y-1.5">
+                      <label className={LABEL_CLASSES}>Fiscal Amount</label>
+                      <input
+                        type="number"
+                        placeholder="0.00"
+                        className={INPUT_CLASSES}
+                        value={cost.amount || ''}
+                        onChange={e => {
+                          const newCosts = [...formData.additional_costs];
+                          newCosts[idx] = { ...newCosts[idx], amount: parseFloat(e.target.value) || 0 };
+                          setFormData({ ...formData, additional_costs: newCosts });
+                        }}
+                      />
+                    </div>
+                    <button type="button" onClick={() => {
+                      const newCosts = [...formData.additional_costs];
+                      newCosts.splice(idx, 1);
+                      setFormData({ ...formData, additional_costs: newCosts });
+                    }} className="p-3 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all h-12 w-12 flex items-center justify-center shadow-sm">
+                      <ICONS.Delete />
+                    </button>
+                  </div>
+                ))}
+                {formData.additional_costs.length === 0 && (
+                  <div className="py-12 border-2 border-dashed border-slate-100 rounded-[32px] flex flex-col items-center justify-center text-slate-400">
+                    <div className="p-3 bg-slate-50 rounded-full mb-3"><ICONS.Finances /></div>
+                    <p className="font-bold text-sm">No additional fiscal entries found.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Project Notes */}
+            <div className={SECTION_CONTAINER}>
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-12 h-12 rounded-[14px] bg-slate-900 flex items-center justify-center text-white">
+                  <ICONS.Info />
                 </div>
                 <div>
-                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-800 leading-none">Operational Costs</h3>
-                  <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">External overheads & assets</p>
+                  <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-900">Intelligence Briefing</h3>
+                  <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider italic">Strategic details & context</p>
                 </div>
               </div>
-              <button type="button" onClick={() => setFormData({ ...formData, additional_costs: [...formData.additional_costs, { cost_type: 'Third Party Cost', description: '', amount: 0 }] })} className="px-4 py-2 bg-amber-50 text-amber-600 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-amber-100 transition-colors">+ New Expense</button>
+              <textarea
+                className={`${INPUT_CLASSES} h-40 py-6 resize-none bg-slate-50/30 border-slate-100 italic font-medium`}
+                placeholder="Secure project notes and internal briefing details..."
+                value={formData.notes || ''}
+                onChange={e => setFormData({ ...formData, notes: e.target.value })}
+              />
             </div>
 
-            <div className="space-y-4">
-              {formData.additional_costs.map((cost: any, idx: number) => (
-                <div key={idx} className="p-6 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col md:flex-row gap-4 md:items-end">
-                  <div className="flex-1 space-y-1">
-                    <label className={LABEL_CLASSES}>Cost Type</label>
-                    <select
-                      required
-                      className={INPUT_CLASSES}
-                      value={cost.cost_type || 'Third Party Cost'}
-                      onChange={e => {
-                        const newCosts = [...formData.additional_costs];
-                        newCosts[idx] = { ...newCosts[idx], cost_type: e.target.value };
-                        setFormData({ ...formData, additional_costs: newCosts });
-                      }}
-                    >
-                      <option value="Third Party Cost">Third Party Cost</option>
-                      <option value="Revision Cost">Revision Cost</option>
-                    </select>
-                  </div>
-                  <div className="flex-[2] space-y-1">
-                    <label className={LABEL_CLASSES}>Description</label>
-                    <input
-                      required
-                      className={INPUT_CLASSES}
-                      value={cost.description}
-                      onChange={e => {
-                        const newCosts = [...formData.additional_costs];
-                        newCosts[idx] = { ...newCosts[idx], description: e.target.value };
-                        setFormData({ ...formData, additional_costs: newCosts });
-                      }}
-                    />
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <label className={LABEL_CLASSES}>Amount</label>
-                    <input
-                      type="number"
-                      className={INPUT_CLASSES}
-                      value={cost.amount || ''}
-                      onChange={e => {
-                        const newCosts = [...formData.additional_costs];
-                        newCosts[idx] = { ...newCosts[idx], amount: parseFloat(e.target.value) || 0 };
-                        setFormData({ ...formData, additional_costs: newCosts });
-                      }}
-                    />
-                  </div>
-                  <button type="button" onClick={() => {
-                    const newCosts = [...formData.additional_costs];
-                    newCosts.splice(idx, 1);
-                    setFormData({ ...formData, additional_costs: newCosts });
-                  }} className="p-3 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all h-[52px] flex items-center justify-center">
-                    <ICONS.Delete />
-                  </button>
-                </div>
-              ))}
-              {formData.additional_costs.length === 0 && <p className="text-center text-slate-400 font-medium text-sm">No additional costs.</p>}
+            <div className="flex flex-col sm:flex-row items-center justify-end gap-6 pt-10 border-t border-slate-100">
+              <button type="button" onClick={onClose} className="w-full sm:w-auto px-10 py-3 text-[11px] font-black text-slate-400 uppercase tracking-widest hover:text-rose-600 transition-all">Cancel Onboarding</button>
+              <button type="submit" className={PRIMARY_BUTTON_CLASSES}>Commit Protocol</button>
             </div>
-          </div>
-
-          {/* Project Notes */}
-          <div className={SECTION_CONTAINER}>
-            <div className="flex items-center gap-3 text-slate-600 mb-8">
-              <ICONS.Info />
-              <h3 className="text-[12px] font-black uppercase tracking-[0.2em]">Project Notes</h3>
-            </div>
-            <textarea
-              className={`${INPUT_CLASSES} h-32 py-4 resize-none`}
-              placeholder="Internal project notes and details..."
-              value={formData.notes || ''}
-              onChange={e => setFormData({ ...formData, notes: e.target.value })}
-            />
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center justify-end gap-4 pt-6 pb-12 sm:pb-0">
-            <button type="button" onClick={onClose} className="w-full sm:w-auto px-10 py-3 text-[11px] font-black text-[#64748B] uppercase tracking-widest hover:text-[#0F172A] transition-all">Discard</button>
-
-            <button type="submit" className={PRIMARY_BUTTON_CLASSES}>Save Project</button>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );
@@ -384,18 +409,18 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
 
 const FinancialWidget = ({ label, value, color, sub }: any) => {
   const colors: any = {
-    emerald: "bg-emerald-50 text-emerald-600 border-emerald-100/50",
-    blue: "bg-blue-50 text-blue-600 border-blue-100/50",
-    amber: "bg-amber-50 text-amber-600 border-amber-100/50",
+    emerald: "bg-[#ECFDF5] text-[#059669] border-[#D1FAE5]",
+    blue: "bg-[#EFF6FF] text-[#2563EB] border-[#DBEAFE]",
+    amber: "bg-[#FFFBEB] text-[#D97706] border-[#FEF3C7]",
   };
   return (
-    <div className={`p-6 rounded-[24px] border border-transparent hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-500 overflow-hidden relative group ${colors[color]}`}>
-      <div className="absolute top-0 right-0 w-16 h-16 bg-white/20 blur-2xl rotate-45 translate-x-12 -translate-y-12 group-hover:translate-x-10 transition-transform duration-1000" />
-      <p className="text-[9px] font-black uppercase tracking-[0.15em] opacity-60 mb-1 leading-none">{label}</p>
-      <p className="text-2xl font-black tracking-tight leading-none mb-1.5">{value}</p>
+    <div className={`p-8 rounded-[36px] border shadow-sm group relative overflow-hidden transition-all duration-500 hover:shadow-xl hover:-translate-y-1 ${colors[color]}`}>
+      <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 blur-3xl -translate-x-4 -translate-y-12 group-hover:translate-x-4 transition-transform duration-1000" />
+      <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70 mb-2 leading-none">{label}</p>
+      <p className="text-3xl font-black tracking-tighter leading-none mb-3">{value}</p>
       <div className="flex items-center gap-2">
-        <div className="w-1 h-1 rounded-full bg-current opacity-40" />
-        <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest">{sub}</p>
+        <div className="w-1.5 h-1.5 rounded-full bg-current opacity-30 animate-pulse" />
+        <p className="text-[11px] font-black opacity-60 uppercase tracking-widest">{sub}</p>
       </div>
     </div>
   );

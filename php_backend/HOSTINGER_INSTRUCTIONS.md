@@ -1,5 +1,29 @@
 # Hostinger Deployment & Cron Instructions
 
+## 1. Hosting Environment Requirements
+
+Ensure your Hostinger environment meets these specifications before deployment:
+
+### PHP Configuration
+- **Version**: PHP 8.1 or higher (8.2 / 8.3 recommended)
+- **Required Extensions**:
+  - `pdo` & `pdo_mysql` (Core database connectivity)
+  - `mysqli` (Legacy support/Adminer)
+  - `mbstring` (International text handling)
+  - `openssl` & `curl` (API communication & Security)
+  - `json` (REST API data parsing)
+  - `fileinfo` (Handling logo/invoice uploads)
+  - `gd` (Required for generating PDFs with images/logos)
+
+### Database Configuration
+- **Server**: MySQL 5.7+ or MariaDB 10+
+- **Steps**:
+  1. Create a new MySQL/MariaDB database in hPanel.
+  2. Create a database user and assign them to the database with full permissions.
+  3. **Security Step**: Place your production `secrets.php` file **one level above** your `public_html` directory (e.g., `/home/u12345678/secrets.php`). The system is pre-configured to look for it there securely.
+
+---
+
 ## SMTP / PHPMailer setup
 
 1. Install Composer and PHPMailer in the `php_backend` folder on your Hostinger account (SSH may be required):
