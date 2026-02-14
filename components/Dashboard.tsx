@@ -141,30 +141,31 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, clients, notifications,
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-3 p-1.5 bg-slate-100/50 rounded-2xl border border-slate-200/60 transition-all hover:bg-slate-100">
+          <div className="flex items-center gap-2 p-1 bg-slate-100/50 rounded-xl border border-slate-200/60 transition-all hover:bg-slate-100">
             <button
               onClick={onAddProject}
-              className="flex items-center gap-2.5 px-6 py-3 bg-blue-600 text-white rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:bg-blue-700 hover:-translate-y-0.5 transition-all"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-wider shadow-md shadow-blue-500/10 hover:bg-blue-700 active:scale-95 transition-all"
             >
               <ICONS.Add />
               <span>Project</span>
             </button>
             <button
               onClick={onAddClient}
-              className="flex items-center gap-2.5 px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl text-[11px] font-black uppercase tracking-widest hover:border-slate-300 hover:bg-white hover:shadow-sm transition-all"
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:border-slate-300 hover:text-slate-900 active:scale-95 transition-all"
             >
               <ICONS.Clients />
               <span>Partner</span>
             </button>
             <button
               onClick={onViewTeams}
-              className="flex items-center gap-2.5 px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl text-[11px] font-black uppercase tracking-widest hover:border-slate-300 hover:bg-white hover:shadow-sm transition-all"
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:border-slate-300 hover:text-slate-900 active:scale-95 transition-all"
             >
               <ICONS.Teams />
               <span>Team</span>
             </button>
           </div>
         </div>
+
       </div>
 
 
