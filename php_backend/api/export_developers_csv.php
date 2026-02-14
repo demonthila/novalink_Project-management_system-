@@ -2,6 +2,10 @@
 // api/export_developers_csv.php
 require_once 'config.php';
 
+// Quiet deprecation/warning output to avoid corrupting CSV streams
+ini_set('display_errors', '0');
+error_reporting(E_ALL & ~E_DEPRECATED & ~E_WARNING);
+
 // Optional key protection
 $key = $_GET['key'] ?? '';
 if (defined('CRON_SECRET') && CRON_SECRET !== '' && $key !== '' && $key !== CRON_SECRET) {
@@ -11,7 +15,8 @@ if (defined('CRON_SECRET') && CRON_SECRET !== '' && $key !== '' && $key !== CRON
 
 try {
     // Fetch developers and their assigned projects (comma-separated)
-    $devStmt = $pdo->query("SELECT id, name, specialization, email, phone, status, created_at FROM developers ORDER BY id ASC");
+    // Match actual `developers` table columns (name, role, email, status)
+    $devStmt = $pdo->query("SELECT id, name, role, email, status FROM developers ORDER BY id ASC");
     $devs = $devStmt->fetchAll(PDO::FETCH_ASSOC);
 
     $assignStmt = $pdo->prepare("SELECT p.name FROM project_developers pd JOIN projects p ON pd.project_id = p.id WHERE pd.developer_id = ?");
@@ -20,7 +25,7 @@ try {
     header('Content-Disposition: attachment; filename=developers_export_' . date('Y-m-d') . '.csv');
 
     $out = fopen('php://output', 'w');
-    fputcsv($out, ['developer_id','name','specialization','email','phone','status','created_at','assigned_projects']);
+    fputcsv($out, ['developer_id','name','role','email','status','assigned_projects']);
 
     foreach ($devs as $d) {
         $assignStmt->execute([$d['id']]);
@@ -30,11 +35,9 @@ try {
         fputcsv($out, [
             $d['id'],
             $d['name'],
-            $d['specialization'],
+            $d['role'],
             $d['email'],
-            $d['phone'],
             $d['status'],
-            $d['created_at'],
             $assigned
         ]);
     }

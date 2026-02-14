@@ -15,6 +15,7 @@ const Settings: React.FC<SettingsProps> = ({ users, onAddUser, onDeleteUser, cur
     const [showAddModal, setShowAddModal] = useState(false);
     const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'User' as 'Admin' | 'User' });
     const [currency, setCurrency] = useState('AUD');
+    const [demoAdminExists, setDemoAdminExists] = useState<boolean | null>(null);
 
     useEffect(() => {
         const loadSettings = async () => {
@@ -29,6 +30,16 @@ const Settings: React.FC<SettingsProps> = ({ users, onAddUser, onDeleteUser, cur
             }
         };
         loadSettings();
+        // check demo admin presence
+        (async () => {
+            try {
+                const res = await fetch('/api/create_demo_admin.php');
+                const j = await res.json();
+                setDemoAdminExists(j.exists === true);
+            } catch (err) {
+                setDemoAdminExists(null);
+            }
+        })();
     }, []);
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -176,6 +187,45 @@ const Settings: React.FC<SettingsProps> = ({ users, onAddUser, onDeleteUser, cur
                     </div>
 
                     {/* Email Test removed per request (reminders handled by server cron) */}
+                    {/* Manage Account */}
+                    <div className="space-y-2">
+                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">Manage Account</label>
+                        <div className="grid grid-cols-1 gap-3">
+                            <input placeholder="Name" id="account-name" className="px-4 py-3 rounded-xl border" />
+                            <input placeholder="Email" id="account-email" className="px-4 py-3 rounded-xl border" />
+                            <input placeholder="New password (leave blank to keep)" id="account-password" type="password" className="px-4 py-3 rounded-xl border" />
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={async () => {
+                                        const name = (document.getElementById('account-name') as HTMLInputElement).value;
+                                        const email = (document.getElementById('account-email') as HTMLInputElement).value;
+                                        const password = (document.getElementById('account-password') as HTMLInputElement).value;
+                                        if (!name && !email && !password) { alert('Enter at least one field'); return; }
+                                        try {
+                                            const res = await fetch('/api/update_user.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, email, password }) });
+                                            const j = await res.json();
+                                            if (j.success) { alert('Account updated. Please re-login if you changed email or password.'); }
+                                            else alert(j.message || j.error || 'Update failed');
+                                        } catch (err) { alert('Request failed'); }
+                                    }}
+                                    className="px-4 py-3 rounded-xl bg-[#0F172A] text-white font-bold"
+                                >
+                                    Save Account
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        (document.getElementById('account-name') as HTMLInputElement).value = '';
+                                        (document.getElementById('account-email') as HTMLInputElement).value = '';
+                                        (document.getElementById('account-password') as HTMLInputElement).value = '';
+                                    }}
+                                    className="px-4 py-3 rounded-xl bg-white border"
+                                >
+                                    Reset
+                                </button>
+                            </div>
+                            <p className="text-xs text-slate-400">Update your account details here.</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -194,6 +244,40 @@ const Settings: React.FC<SettingsProps> = ({ users, onAddUser, onDeleteUser, cur
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
                     </div>
                 </button>
+                <div className="ml-3">
+                    {demoAdminExists === null ? (
+                        <button className="px-4 py-3 rounded-xl bg-slate-50 border border-slate-100 text-slate-600">Checking...</button>
+                    ) : demoAdminExists ? (
+                        <button
+                            onClick={async () => {
+                                if (!confirm('Remove demo admin (admin)?')) return;
+                                try {
+                                    const res = await fetch('/api/create_demo_admin.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'delete' }) });
+                                    const j = await res.json();
+                                    if (j.success) setDemoAdminExists(false);
+                                    else alert(j.message || 'Failed');
+                                } catch (err) { alert('Request failed'); }
+                            }}
+                            className="px-4 py-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 font-bold"
+                        >
+                            Remove Demo Admin
+                        </button>
+                    ) : (
+                        <button
+                            onClick={async () => {
+                                try {
+                                    const res = await fetch('/api/create_demo_admin.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'create' }) });
+                                    const j = await res.json();
+                                    if (j.success) setDemoAdminExists(true);
+                                    else alert(j.message || 'Failed to create');
+                                } catch (err) { alert('Request failed'); }
+                            }}
+                            className="px-4 py-3 rounded-xl bg-green-50 border border-green-200 text-green-700 font-bold"
+                        >
+                            Create Demo Admin
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* User Grid */}

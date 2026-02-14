@@ -19,14 +19,7 @@ import {
 import { ICONS } from './constants';
 import { formatCurrency, calculateGrandTotal } from './utils';
 
-const DEFAULT_ADMIN: User = {
-  id: 'admin-1',
-  name: 'Administrator',
-  email: 'admin',
-  role: 'Admin',
-  password: 'admin123',
-  createdAt: new Date().toISOString()
-};
+// Note: Authentication now delegates to the backend `auth.php` endpoint.
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -130,14 +123,31 @@ const App: React.FC = () => {
     }
   };
 
-  const handleLogin = (creds: { email: string; pass: string }) => {
-    // Simple mock auth for now, or check backend if auth.php implemented
-    // Using hardcoded admin for simplicity as requested 'production ready' usually implies real auth but user didn't ask for full auth system setup beyond sessions.
-    if (creds.email === 'admin' && creds.pass === 'admin123') {
-      setCurrentUser(DEFAULT_ADMIN);
-      localStorage.setItem('it_auth_user', JSON.stringify(DEFAULT_ADMIN));
-    } else {
-      alert('Invalid Credentials');
+  const handleLogin = async (creds: { email: string; pass: string }) => {
+    try {
+      const res = await fetch('/api/auth.php?action=login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: creds.email, password: creds.pass })
+      });
+      const data = await res.json();
+      if (res.ok && data.success && data.user) {
+        const user: any = {
+          id: data.user.id || creds.email,
+          name: data.user.name || creds.email,
+          email: creds.email,
+          role: data.user.role || 'User',
+          password: '',
+          createdAt: new Date().toISOString()
+        };
+        setCurrentUser(user as any);
+        localStorage.setItem('it_auth_user', JSON.stringify(user));
+      } else {
+        alert(data.message || 'Invalid credentials');
+      }
+    } catch (err) {
+      console.error('Login error', err);
+      alert('Login failed - please contact your administrator.');
     }
   };
 

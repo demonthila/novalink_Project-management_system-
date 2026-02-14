@@ -20,22 +20,83 @@ if ($action === 'login' && $method === 'POST') {
         jsonResponse(false, "Missing credentials");
     }
 
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
-    $stmt->execute([$data['email']]);
-    $user = $stmt->fetch();
+    // Create users table if it doesn't exist (for initial setup)
+    try {
+        $createTableSql = "CREATE TABLE IF NOT EXISTS `users` (
+          `id` int(11) NOT NULL AUTO_INCREMENT,
+          `email` varchar(100) NOT NULL UNIQUE,
+          `password` varchar(255) NOT NULL,
+          `name` varchar(100) NOT NULL,
+          `role` enum('Admin','User') DEFAULT 'User',
+          `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (`id`)
+        )";
+        $pdo->exec($createTableSql);
+    } catch (PDOException $e) {
+        // Table might already exist, continue but log error
+        error_log("Users table creation: " . $e->getMessage());
+    }
 
-    if ($user && password_verify($data['password'], $user['password'])) {
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['user_role'] = $user['role'];
-        $_SESSION['user_name'] = $user['name'];
-        jsonResponse(true, "Login successful", ["user" => [
-            "id" => $user['id'], 
-            "name" => $user['name'], 
-            "role" => $user['role']
-        ]]);
-    } else {
-        http_response_code(401);
-        jsonResponse(false, "Invalid credentials");
+    // Check for demo admin login and auto-create if needed
+    if ($data['email'] === 'admin' && $data['password'] === 'admin123') {
+        try {
+            // Check if admin exists
+            $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
+            $stmt->execute(['admin']);
+            $user = $stmt->fetch();
+            
+            if (!$user) {
+                // Create the demo admin
+                $hash = password_hash('admin123', PASSWORD_DEFAULT);
+                $insert = $pdo->prepare("INSERT INTO users (name, email, password, role, created_at) VALUES (?, ?, ?, ?, NOW())");
+                $insert->execute(['Administrator', 'admin', $hash, 'Admin']);
+                
+                $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
+                $stmt->execute(['admin']);
+                $user = $stmt->fetch();
+            }
+            
+            if ($user && password_verify('admin123', $user['password'])) {
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['user_role'] = $user['role'];
+                $_SESSION['user_name'] = $user['name'];
+                jsonResponse(true, "Login successful", ["user" => [
+                    "id" => $user['id'], 
+                    "name" => $user['name'], 
+                    "role" => $user['role']
+                ]]);
+            } else {
+                http_response_code(401);
+                jsonResponse(false, "Demo admin authentication failed");
+            }
+        } catch (PDOException $e) {
+            http_response_code(500);
+            jsonResponse(false, "Database error: " . $e->getMessage());
+        }
+    }
+
+    // Regular login - check database
+    try {
+        $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
+        $stmt->execute([$data['email']]);
+        $user = $stmt->fetch();
+
+        if ($user && password_verify($data['password'], $user['password'])) {
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['user_role'] = $user['role'];
+            $_SESSION['user_name'] = $user['name'];
+            jsonResponse(true, "Login successful", ["user" => [
+                "id" => $user['id'], 
+                "name" => $user['name'], 
+                "role" => $user['role']
+            ]]);
+        } else {
+            http_response_code(401);
+            jsonResponse(false, "Invalid credentials");
+        }
+    } catch (PDOException $e) {
+        http_response_code(500);
+        jsonResponse(false, "Database error: " . $e->getMessage());
     }
 }
 

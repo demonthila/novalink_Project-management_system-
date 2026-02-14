@@ -2,6 +2,10 @@
 // api/export_projects_csv.php
 require_once 'config.php';
 
+// Quiet deprecation/warning output to avoid corrupting CSV streams
+ini_set('display_errors', '0');
+error_reporting(E_ALL & ~E_DEPRECATED & ~E_WARNING);
+
 // Basic auth/secret optional protection
 $key = $_GET['key'] ?? '';
 if (defined('CRON_SECRET') && CRON_SECRET !== '' && $key !== '' && $key !== CRON_SECRET) {
