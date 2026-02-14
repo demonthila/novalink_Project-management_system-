@@ -105,11 +105,13 @@ const App: React.FC = () => {
         setSettingsUsers(data.users.map((u: any) => ({
           id: String(u.id),
           name: u.name,
+          username: u.username,
           email: u.email,
           password: '',
           role: u.role || 'User',
           createdAt: u.createdAt || u.created_at || new Date().toISOString()
         })));
+
       } else {
         setSettingsUsers([{ ...currentUser }]);
       }
@@ -130,7 +132,7 @@ const App: React.FC = () => {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: user.name, email: user.email, password: user.password, role: user.role })
+        body: JSON.stringify({ username: user.username, name: user.name, email: user.email, password: user.password, role: user.role })
       });
       const data = await res.json();
       if (data.success) {
@@ -159,10 +161,11 @@ const App: React.FC = () => {
     }
   };
 
-  const handleEditUser = async (id: string, updates: { name?: string; email?: string; password?: string; role?: 'Admin' | 'User' }): Promise<boolean> => {
+  const handleEditUser = async (id: string, updates: { name?: string; username?: string; email?: string; password?: string; role?: 'Superadmin' | 'Admin' | 'User' }): Promise<boolean> => {
     try {
       const body: any = { id: Number(id), ...updates };
-      if (updates.password === '') delete body.password;
+      if (!updates.password) delete body.password;
+
       const res = await fetch('/api/update_user.php', {
         method: 'POST',
         credentials: 'include',
@@ -218,15 +221,15 @@ const App: React.FC = () => {
     }
   };
 
-  const handleLogin = async (creds: { email: string; pass: string }) => {
+  const handleLogin = async (creds: { username: string; pass: string }) => {
     try {
       const res = await fetch('/api/auth.php?action=login', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: creds.email, password: creds.pass })
+        body: JSON.stringify({ username: creds.username, password: creds.pass })
       });
-      let data: { success?: boolean; message?: string; user?: { id: number; name: string; role: string } };
+      let data: { success?: boolean; message?: string; user?: { id: number; name: string; username: string; role: 'Superadmin' | 'Admin' | 'User' } };
       const text = await res.text();
       try {
         data = text ? JSON.parse(text) : {};
@@ -240,15 +243,15 @@ const App: React.FC = () => {
         };
       }
       if (res.ok && data.success && data.user) {
-        const user: any = {
-          id: data.user.id || creds.email,
-          name: data.user.name || creds.email,
-          email: creds.email,
-          role: data.user.role || 'User',
-          password: '',
+        const user: User = {
+          id: String(data.user.id),
+          name: data.user.name,
+          username: data.user.username,
+          email: '', // Backend might not return email on login for security or if not needed
+          role: data.user.role,
           createdAt: new Date().toISOString()
         };
-        setCurrentUser(user as any);
+        setCurrentUser(user);
         localStorage.setItem('it_auth_user', JSON.stringify(user));
       } else {
         alert(data.message || 'Invalid credentials');
@@ -278,7 +281,9 @@ const App: React.FC = () => {
       onLogout={handleLogout}
       notificationCount={notifications.filter((n: any) => !n.is_read).length}
       pendingCount={pendingCount}
+      currentUser={currentUser}
     >
+
       {activeTab === 'dashboard' && (
         <Dashboard
           projects={projects}
@@ -360,7 +365,8 @@ const App: React.FC = () => {
         />
       )}
 
-      {activeTab === 'settings' && <Settings users={settingsUsers} currentUserEmail={currentUser.email} currentUserRole={currentUser.role} usersLoading={settingsUsersLoading} adminOnlyMessage={settingsUsersAdminOnly} onAddUser={handleAddUser} onDeleteUser={handleDeleteUser} onEditUser={handleEditUser} />}
+      {activeTab === 'settings' && <Settings users={settingsUsers} currentUsername={currentUser.username} currentUserRole={currentUser.role} usersLoading={settingsUsersLoading} adminOnlyMessage={settingsUsersAdminOnly} onAddUser={handleAddUser} onDeleteUser={handleDeleteUser} onEditUser={handleEditUser} />}
+
 
       {selectedProjectForDetail && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" onClick={() => setSelectedProjectForDetail(null)}>

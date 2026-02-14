@@ -89,10 +89,12 @@ export interface DashboardStats {
 
 export interface User {
   id: string;
+  username: string;
   name: string;
   email: string;
-  password: string;
-  role: 'Admin' | 'User';
+  password?: string;
+  role: 'Superadmin' | 'Admin' | 'User';
   createdAt: string;
 }
+
 

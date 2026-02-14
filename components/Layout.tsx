@@ -9,9 +9,11 @@ interface LayoutProps {
   onLogout: () => void;
   notificationCount: number;
   pendingCount: number;
+  currentUser: any;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, onLogout, notificationCount, pendingCount }) => {
+const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, onLogout, notificationCount, pendingCount, currentUser }) => {
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const menuItems = [
@@ -64,10 +66,10 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, onLo
                     }
                   }}
                   className={`w-full flex items-center gap-4 px-6 py-4 rounded-[20px] transition-all duration-300 group ${isActive && !item.subItems
-                      ? 'bg-[#2563EB] text-white shadow-xl shadow-blue-500/20'
-                      : isActive && item.subItems
-                        ? 'text-[#2563EB]'
-                        : 'text-[#64748B] hover:text-[#0F172A] hover:bg-slate-50'
+                    ? 'bg-[#2563EB] text-white shadow-xl shadow-blue-500/20'
+                    : isActive && item.subItems
+                      ? 'text-[#2563EB]'
+                      : 'text-[#64748B] hover:text-[#0F172A] hover:bg-slate-50'
                     }`}
                 >
                   <div className={`${isActive ? '' : 'text-[#94A3B8] group-hover:text-[#475569]'} transition-colors`}>
@@ -88,8 +90,8 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, onLo
                           setIsMobileMenuOpen(false);
                         }}
                         className={`w-full text-left px-6 py-3 rounded-[16px] text-[14px] font-medium transition-all ${activeTab === sub.id
-                            ? 'bg-blue-50 text-[#2563EB]'
-                            : 'text-[#94A3B8] hover:text-[#0F172A]'
+                          ? 'bg-blue-50 text-[#2563EB]'
+                          : 'text-[#94A3B8] hover:text-[#0F172A]'
                           }`}
                       >
                         <div className="flex items-center justify-between">
@@ -182,13 +184,14 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, onLo
             </button>
             <div className="flex items-center gap-3 sm:gap-4 sm:pl-6 sm:border-l border-[#F1F5F9]">
               <div className="text-right hidden sm:block">
-                <p className="text-[13px] font-bold text-[#0F172A]">ADMIN USER</p>
-                <p className="text-[11px] font-medium text-[#64748B]">STRATIS HQ</p>
+                <p className="text-[13px] font-bold text-[#0F172A] uppercase">{currentUser?.name || 'User'}</p>
+                <p className="text-[11px] font-medium text-[#64748B] uppercase">{currentUser?.role || 'Guest'}</p>
               </div>
               <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-[#0F172A] text-white flex items-center justify-center font-bold text-sm shadow-xl shadow-slate-200">
-                AU
+                {(currentUser?.name || 'U').split(/\s+/).map((n: any) => n[0]).join('').slice(0, 2).toUpperCase()}
               </div>
             </div>
+
           </div>
         </header>
 

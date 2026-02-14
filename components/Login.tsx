@@ -2,8 +2,8 @@
 import React, { useState } from 'react';
 import { LOGO } from '../constants';
 
-const Login: React.FC<{ onLogin: (creds: { email: string; pass: string }) => void }> = ({ onLogin }) => {
-  const [email, setEmail] = useState('');
+const Login: React.FC<{ onLogin: (creds: { username: string; pass: string }) => void }> = ({ onLogin }) => {
+  const [username, setUsername] = useState('');
   const [pass, setPass] = useState('');
   const [error, setError] = useState('');
 
@@ -22,21 +22,22 @@ const Login: React.FC<{ onLogin: (creds: { email: string; pass: string }) => voi
           <p className="text-slate-500 font-medium mt-2">Manage the NovaLink IT Ecosystem</p>
         </div>
 
-        <form onSubmit={(e) => { e.preventDefault(); onLogin({ email, pass }); }} className="space-y-8">
+        <form onSubmit={(e) => { e.preventDefault(); onLogin({ username, pass }); }} className="space-y-8">
           <div className="space-y-6">
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Username / Email</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Username</label>
               <div className="relative">
                 <input
                   required
                   autoFocus
                   className="w-full px-6 py-4 bg-white border-2 border-slate-100 rounded-2xl focus:ring-8 focus:ring-blue-500/10 focus:border-[#0A69E1] outline-none text-slate-900 font-bold transition-all"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                 />
               </div>
             </div>
+
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Secure Key</label>
               <input

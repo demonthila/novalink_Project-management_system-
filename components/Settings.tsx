@@ -6,22 +6,23 @@ import { fetchSettings, updateSettings } from '../services/api';
 
 interface SettingsProps {
     users: User[];
-    currentUserEmail: string;
+    currentUsername: string;
     currentUserRole: string;
     usersLoading: boolean;
     adminOnlyMessage: boolean;
     onAddUser: (user: Omit<User, 'id' | 'createdAt'>) => void;
     onDeleteUser: (id: string) => void;
-    onEditUser: (id: string, updates: { name?: string; email?: string; password?: string; role?: 'Admin' | 'User' }) => void | Promise<boolean>;
+    onEditUser: (id: string, updates: { name?: string; username?: string; email?: string; password?: string; role?: 'Superadmin' | 'Admin' | 'User' }) => void | Promise<boolean>;
 }
 
-const Settings: React.FC<SettingsProps> = ({ users, currentUserEmail, currentUserRole, usersLoading, adminOnlyMessage, onAddUser, onDeleteUser, onEditUser }) => {
+const Settings: React.FC<SettingsProps> = ({ users, currentUsername, currentUserRole, usersLoading, adminOnlyMessage, onAddUser, onDeleteUser, onEditUser }) => {
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
-    const [editForm, setEditForm] = useState({ name: '', email: '', password: '', role: 'User' as 'Admin' | 'User' });
-    const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'User' as 'Admin' | 'User' });
+    const [editForm, setEditForm] = useState({ name: '', username: '', email: '', password: '', role: 'Admin' as 'Superadmin' | 'Admin' | 'User' });
+    const [newUser, setNewUser] = useState({ name: '', username: '', email: '', password: '', role: 'Admin' as 'Superadmin' | 'Admin' | 'User' });
     const [currency, setCurrency] = useState('AUD');
     const [demoAdminExists, setDemoAdminExists] = useState<boolean | null>(null);
+
 
     useEffect(() => {
         const loadSettings = async () => {
@@ -47,13 +48,15 @@ const Settings: React.FC<SettingsProps> = ({ users, currentUserEmail, currentUse
         })();
     }, []);
 
-    const isAdmin = currentUserRole === 'Admin';
+    const isAdmin = currentUserRole === 'Admin' || currentUserRole === 'Superadmin';
+    const isSuperadmin = currentUserRole === 'Superadmin';
+
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         onAddUser(newUser);
         setShowAddModal(false);
-        setNewUser({ name: '', email: '', password: '', role: 'User' });
+        setNewUser({ name: '', username: '', email: '', password: '', role: 'Admin' });
     };
 
     const handleCurrencyChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -69,11 +72,15 @@ const Settings: React.FC<SettingsProps> = ({ users, currentUserEmail, currentUse
     };
 
     const handleDeleteClick = (user: User) => {
-        if (user.email === currentUserEmail) {
+        if (user.username === currentUsername) {
             alert("You cannot delete your own account.");
             return;
         }
-        if (!confirm(`Remove access for ${user.name} (${user.email})?`)) return;
+        if (user.role === 'Superadmin' && !isSuperadmin) {
+            alert("Only Superadmins can delete other Superadmins.");
+            return;
+        }
+        if (!confirm(`Remove access for ${user.name} (${user.username})?`)) return;
         onDeleteUser(user.id);
     };
 
@@ -220,18 +227,18 @@ const Settings: React.FC<SettingsProps> = ({ users, currentUserEmail, currentUse
                                     <tr key={user.id} className="hover:bg-slate-50/50 transition-colors">
                                         <td className="px-5 py-3">
                                             <div className="flex items-center gap-3">
-                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 ${user.role === 'Admin' ? 'bg-slate-800 text-white' : 'bg-blue-100 text-blue-700'}`}>
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 ${user.role === 'Superadmin' ? 'bg-indigo-600 text-white' : user.role === 'Admin' ? 'bg-slate-800 text-white' : 'bg-blue-100 text-blue-700'}`}>
                                                     {user.name.split(/\s+/).map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                                                 </div>
                                                 <span className="font-semibold text-slate-800">{user.name}</span>
-                                                {user.email === currentUserEmail && (
+                                                {user.username === currentUsername && (
                                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-slate-100 px-2 py-0.5 rounded">You</span>
                                                 )}
                                             </div>
                                         </td>
-                                        <td className="px-5 py-3 text-slate-600 text-sm font-medium">{user.email}</td>
+                                        <td className="px-5 py-3 text-slate-600 text-sm font-medium">{user.username} {user.email && <span className="text-slate-400">({user.email})</span>}</td>
                                         <td className="px-5 py-3">
-                                            <span className={`inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold uppercase ${user.role === 'Admin' ? 'bg-slate-800 text-white' : 'bg-blue-100 text-blue-700'}`}>
+                                            <span className={`inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold uppercase ${user.role === 'Superadmin' ? 'bg-indigo-600 text-white' : user.role === 'Admin' ? 'bg-slate-800 text-white' : 'bg-blue-100 text-blue-700'}`}>
                                                 {user.role}
                                             </span>
                                         </td>
@@ -244,14 +251,14 @@ const Settings: React.FC<SettingsProps> = ({ users, currentUserEmail, currentUse
                                                     type="button"
                                                     onClick={() => {
                                                         setEditingUser(user);
-                                                        setEditForm({ name: user.name, email: user.email, password: '', role: user.role });
+                                                        setEditForm({ name: user.name, username: user.username, email: user.email, password: '', role: user.role });
                                                     }}
                                                     className="p-2 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                                                     title="Edit"
                                                 >
                                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                                                 </button>
-                                                {user.email !== currentUserEmail && (
+                                                {user.username !== currentUsername && (
                                                     <button
                                                         type="button"
                                                         onClick={() => handleDeleteClick(user)}
@@ -303,10 +310,19 @@ const Settings: React.FC<SettingsProps> = ({ users, currentUserEmail, currentUse
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Email / Username</label>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Username</label>
                                 <input
                                     required
-                                    type="text"
+                                    value={editForm.username}
+                                    onChange={e => setEditForm(f => ({ ...f, username: e.target.value }))}
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-800 font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                                    placeholder="Username"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Email (optional)</label>
+                                <input
+                                    type="email"
                                     value={editForm.email}
                                     onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
                                     className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-800 font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
@@ -327,11 +343,12 @@ const Settings: React.FC<SettingsProps> = ({ users, currentUserEmail, currentUse
                                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Role</label>
                                 <select
                                     value={editForm.role}
-                                    onChange={e => setEditForm(f => ({ ...f, role: e.target.value as 'Admin' | 'User' }))}
+                                    onChange={e => setEditForm(f => ({ ...f, role: e.target.value as any }))}
                                     className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-800 font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                                 >
                                     <option value="User">User</option>
                                     <option value="Admin">Admin</option>
+                                    {isSuperadmin && <option value="Superadmin">Superadmin</option>}
                                 </select>
                             </div>
                             <div className="flex gap-3 pt-4">
@@ -371,10 +388,19 @@ const Settings: React.FC<SettingsProps> = ({ users, currentUserEmail, currentUse
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Email / Username</label>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Username</label>
                                 <input
                                     required
-                                    type="text"
+                                    value={newUser.username}
+                                    onChange={e => setNewUser(u => ({ ...u, username: e.target.value }))}
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-800 font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                                    placeholder="Username"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Email (optional)</label>
+                                <input
+                                    type="email"
                                     value={newUser.email}
                                     onChange={e => setNewUser(u => ({ ...u, email: e.target.value }))}
                                     className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-800 font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
@@ -396,11 +422,12 @@ const Settings: React.FC<SettingsProps> = ({ users, currentUserEmail, currentUse
                                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Role</label>
                                 <select
                                     value={newUser.role}
-                                    onChange={e => setNewUser(u => ({ ...u, role: e.target.value as 'Admin' | 'User' }))}
+                                    onChange={e => setNewUser(u => ({ ...u, role: e.target.value as any }))}
                                     className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-800 font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                                 >
-                                    <option value="User">User</option>
                                     <option value="Admin">Admin</option>
+                                    <option value="User">User</option>
+                                    {isSuperadmin && <option value="Superadmin">Superadmin</option>}
                                 </select>
                             </div>
                             <div className="flex gap-3 pt-4">
