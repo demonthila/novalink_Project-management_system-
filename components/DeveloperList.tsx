@@ -99,7 +99,7 @@ const DeveloperList: React.FC<DeveloperListProps> = ({ developers, onAdd, onUpda
         </div>
         <button
           onClick={handleOpenAdd}
-          className="h-[60px] px-10 bg-[#2563EB] text-white rounded-[20px] text-[13px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/25 hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-3"
+          className="flex items-center gap-2.5 px-6 py-3 bg-[#2563EB] text-white rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:bg-blue-700 hover:-translate-y-0.5 transition-all"
         >
           <ICONS.Add />
           Onboard New Developer
@@ -183,7 +183,7 @@ const DeveloperList: React.FC<DeveloperListProps> = ({ developers, onAdd, onUpda
   );
 };
 
-  const DeveloperModal = ({ isOpen, onClose, onSubmit, initialData }: any) => {
+const DeveloperModal = ({ isOpen, onClose, onSubmit, initialData }: any) => {
   const [formData, setFormData] = useState(initialData || {
     full_name: '',
     id_card_number: '',
@@ -249,9 +249,9 @@ const DeveloperList: React.FC<DeveloperListProps> = ({ developers, onAdd, onUpda
             <textarea placeholder="More comments" className={MODAL_INPUT} rows={3} name="comments" value={formData.comments} onChange={e => setFormData({ ...formData, comments: e.target.value })} />
           </div>
 
-          <div className="flex justify-end gap-6 pt-6 border-t border-slate-100">
-            <button type="button" onClick={onClose} className="px-8 py-4 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:text-[#0A69E1] transition-colors">Discard</button>
-            <button type="submit" className="h-[60px] px-10 bg-[#2563EB] text-white rounded-[20px] text-[13px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/25 hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center">Save Developer</button>
+          <div className="flex justify-end gap-6 pt-6 border-t border-slate-100 items-center">
+            <button type="button" onClick={onClose} className="text-slate-400 font-bold uppercase text-[11px] tracking-widest hover:text-[#0A69E1] transition-colors">Discard</button>
+            <button type="submit" className="flex items-center gap-2 px-6 py-3 bg-[#2563EB] text-white rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:bg-blue-700 hover:-translate-y-0.5 transition-all">Save Developer</button>
           </div>
         </form>
       </div>
@@ -284,7 +284,7 @@ const DeveloperProfileModal = ({ dev, onClose, onEdit }: any) => {
             <button onClick={onEdit} className="h-[52px] px-6 bg-blue-50 border border-blue-100 rounded-xl font-bold text-[#0A69E1] text-sm hover:bg-blue-100 transition-colors flex items-center gap-2"><ICONS.Edit /> Edit Profile</button>
           </div>
 
-            <div className="grid grid-cols-2 gap-y-8 gap-x-12 p-8 bg-blue-50/20 border border-blue-100 rounded-[32px]">
+          <div className="grid grid-cols-2 gap-y-8 gap-x-12 p-8 bg-blue-50/20 border border-blue-100 rounded-[32px]">
             <DetailItem label="Email" value={dev.email} />
             <DetailItem label="Joined" value={dev.created_at} />
           </div>

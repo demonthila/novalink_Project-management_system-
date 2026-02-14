@@ -115,10 +115,11 @@ elseif ($method === 'POST') {
         // 3. Insert Additional Costs
         $totalAddCost = 0;
         if (!empty($data['additional_costs'])) {
-            $cStmt = $pdo->prepare("INSERT INTO additional_costs (project_id, description, amount) VALUES (?, ?, ?)");
+            $cStmt = $pdo->prepare("INSERT INTO additional_costs (project_id, cost_type, description, amount) VALUES (?, ?, ?, ?)");
             foreach ($data['additional_costs'] as $cost) {
                 $amount = (float)$cost['amount'];
-                $cStmt->execute([$projectId, $cost['description'], $amount]);
+                $costType = $cost['cost_type'] ?? 'Third Party Cost';
+                $cStmt->execute([$projectId, $costType, $cost['description'], $amount]);
                 $totalAddCost += $amount;
             }
         }
@@ -225,9 +226,10 @@ elseif ($method === 'PUT') {
         // Update Additional Costs
         if (isset($data['additional_costs'])) {
             $pdo->prepare("DELETE FROM additional_costs WHERE project_id=?")->execute([$id]);
-            $cStmt = $pdo->prepare("INSERT INTO additional_costs (project_id, description, amount) VALUES (?, ?, ?)");
+            $cStmt = $pdo->prepare("INSERT INTO additional_costs (project_id, cost_type, description, amount) VALUES (?, ?, ?, ?)");
             foreach ($data['additional_costs'] as $cost) {
-                $cStmt->execute([$id, $cost['description'], $cost['amount']]);
+                $costType = $cost['cost_type'] ?? 'Third Party Cost';
+                $cStmt->execute([$id, $costType, $cost['description'], $cost['amount']]);
             }
         }
         

@@ -115,18 +115,20 @@ const PaymentTracker: React.FC<PaymentTrackerProps> = ({
     const totalExpected = milestones.reduce((sum, m) => sum + Number(m.amount), 0);
 
     return (
-        <div className="bg-white p-6 sm:p-10 rounded-[24px] sm:rounded-[40px] border border-[#F1F5F9] shadow-sm">
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                    <ICONS.Finances />
-                    <h3 className="text-lg font-black text-[#0F172A] uppercase tracking-widest">Payment Schedule & Reminders</h3>
-                </div>
-                <div className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-2 rounded-lg">
-                    📅 Each payment has its own due date
+        <div className="bg-white p-6 sm:p-10 rounded-[32px] sm:rounded-[40px] border border-slate-100 shadow-sm space-y-8">
+            <div className="flex items-center justify-between pb-6 border-b border-slate-50">
+                <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <ICONS.Finances />
+                    </div>
+                    <div>
+                        <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-800 leading-none">Financial Stream</h3>
+                        <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">Project Invoice Lifecycle</p>
+                    </div>
                 </div>
             </div>
 
-            {error && <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm font-bold rounded-lg">{error}</div>}
+            {error && <div className="p-4 bg-rose-50 text-rose-600 text-[10px] font-black uppercase tracking-widest rounded-xl border border-rose-100">{error}</div>}
 
             <div className="space-y-4">
                 {milestones.map((payment, index) => {
@@ -138,12 +140,12 @@ const PaymentTracker: React.FC<PaymentTrackerProps> = ({
                     return (
                         <div
                             key={payment.id}
-                            className={`p-6 rounded-2xl border-2 ${status.color} transition-all hover:shadow-md`}
+                            className={`p-6 rounded-[24px] border border-slate-100 transition-all group ${isPaid ? 'bg-emerald-50/20' : 'bg-white hover:border-blue-100 hover:shadow-lg hover:shadow-slate-200/50'}`}
                         >
-                            <div className="flex items-start gap-4">
-                                {/* Checkbox */}
+                            <div className="flex items-start gap-6">
+                                {/* Checkbox Node */}
                                 <div className="flex items-center pt-1">
-                                    <label className="relative flex items-center cursor-pointer group">
+                                    <label className="relative flex items-center cursor-pointer">
                                         <input
                                             type="checkbox"
                                             checked={isPaid}
@@ -152,109 +154,72 @@ const PaymentTracker: React.FC<PaymentTrackerProps> = ({
                                             className="sr-only peer"
                                         />
                                         <div className={`
-                      w-7 h-7 border-3 rounded-lg transition-all
-                      ${isPaid
-                                                ? 'bg-emerald-500 border-emerald-500'
-                                                : 'bg-white border-slate-300 group-hover:border-emerald-400'
+                                            w-8 h-8 rounded-xl border-2 transition-all flex items-center justify-center
+                                            ${isPaid
+                                                ? 'bg-emerald-600 border-emerald-600 shadow-lg shadow-emerald-500/20'
+                                                : 'bg-white border-slate-200'
                                             }
-                      ${isUpdating ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-                      flex items-center justify-center
-                    `}>
-                                            {isPaid && (
+                                            ${isUpdating ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-emerald-400'}
+                                        `}>
+                                            {isPaid ? (
                                                 <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                                                 </svg>
-                                            )}
-                                            {isUpdating && !isPaid && (
-                                                <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
-                                            )}
+                                            ) : isUpdating ? (
+                                                <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+                                            ) : null}
                                         </div>
                                     </label>
                                 </div>
 
-                                {/* Payment Details */}
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <span className="text-2xl">{status.icon}</span>
-                                        <h4 className="text-sm font-black text-[#0F172A] uppercase tracking-wide">
-                                            Payment {index + 1}
-                                        </h4>
-                                        <span className={`ml-auto px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${status.color} ${status.textColor}`}>
-                                            {status.label}
-                                        </span>
+                                <div className="flex-1 space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Milestone {index + 1}</p>
+                                            <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest ${isPaid ? 'bg-emerald-100 text-emerald-600' :
+                                                    status.label === 'Overdue' ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-500'
+                                                }`}>
+                                                {status.label}
+                                            </span>
+                                        </div>
+                                        <p className="text-sm font-black text-slate-900 tracking-tight">{formatCurrency(payment.amount, currency)}</p>
                                     </div>
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                                        <div>
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Payment Amount</p>
-                                            <p className="text-lg font-black text-[#0F172A]">{formatCurrency(payment.amount, currency)}</p>
-                                        </div>
-
-                                        <div className="bg-blue-50 p-4 rounded-xl border-2 border-blue-200">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest">
-                                                    📅 Payment Due Date
-                                                </p>
-                                                {!isEditingDueDate && (
-                                                    <button
-                                                        onClick={() => {
-                                                            setEditingDueDateId(payment.id);
-                                                            setTempDueDate(payment.due_date);
-                                                        }}
-                                                        className="px-2 py-1 bg-blue-500 text-white text-[9px] font-bold rounded hover:bg-blue-600 transition-all flex items-center gap-1"
-                                                        title="Change due date"
-                                                    >
-                                                        EDIT
-                                                    </button>
-                                                )}
-                                            </div>
-
+                                    <div className="p-5 bg-white border border-slate-50 rounded-2xl flex items-center justify-between">
+                                        <div className="space-y-1">
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Schedule Node</p>
                                             {isEditingDueDate ? (
-                                                <div className="space-y-2">
+                                                <div className="flex items-center gap-2 mt-2">
                                                     <input
                                                         type="date"
                                                         value={tempDueDate}
                                                         onChange={(e) => setTempDueDate(e.target.value)}
-                                                        className="w-full text-sm font-bold text-slate-700 border-2 border-blue-300 rounded-lg px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                                                        className="text-[11px] font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 outline-none focus:border-blue-500"
                                                     />
-                                                    <div className="flex gap-2">
-                                                        <button
-                                                            onClick={() => handleDueDateUpdate(payment.id, tempDueDate)}
-                                                            className="flex-1 px-3 py-2 bg-blue-500 text-white text-xs font-bold rounded-lg hover:bg-blue-600 transition-all"
-                                                        >
-                                                            ✓ Save Date
-                                                        </button>
-                                                        <button
-                                                            onClick={() => setEditingDueDateId(null)}
-                                                            className="flex-1 px-3 py-2 bg-slate-300 text-slate-700 text-xs font-bold rounded-lg hover:bg-slate-400 transition-all"
-                                                        >
-                                                            ✕ Cancel
-                                                        </button>
-                                                    </div>
+                                                    <button onClick={() => handleDueDateUpdate(payment.id, tempDueDate)} className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"><ICONS.Check /></button>
+                                                    <button onClick={() => setEditingDueDateId(null)} className="p-2 bg-slate-100 text-slate-400 rounded-lg hover:bg-slate-200 transition-colors"><ICONS.Delete /></button>
                                                 </div>
                                             ) : (
-                                                <p className="text-base font-black text-blue-700">
-                                                    {new Date(payment.due_date).toLocaleDateString('en-US', {
-                                                        weekday: 'short',
-                                                        day: 'numeric',
-                                                        month: 'short',
-                                                        year: 'numeric'
-                                                    })}
-                                                </p>
-                                            )}
-
-                                            {!isPaid && !isEditingDueDate && (
-                                                <p className="text-[9px] font-bold text-blue-600 mt-2">
-                                                    🔔 Reminder: 3 days before
+                                                <p className={`text-xs font-black tracking-tight ${status.label === 'Overdue' ? 'text-rose-500' : 'text-slate-700'}`}>
+                                                    {new Date(payment.due_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
                                                 </p>
                                             )}
                                         </div>
+                                        {!isEditingDueDate && !isPaid && (
+                                            <button
+                                                onClick={() => { setEditingDueDateId(payment.id); setTempDueDate(payment.due_date); }}
+                                                className="text-[9px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-700 transition-colors"
+                                            >
+                                                Reschedule
+                                            </button>
+                                        )}
                                     </div>
 
                                     {isPaid && payment.paid_date && (
-                                        <div className="mt-3 pt-3 border-t-2 border-emerald-200">
-                                            <p className="text-xs font-bold text-emerald-600 flex items-center gap-2">
-                                                Payment received on {new Date(payment.paid_date).toLocaleDateString()}
+                                        <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 rounded-lg border border-emerald-100/50">
+                                            <div className="w-1 h-1 rounded-full bg-emerald-500" />
+                                            <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">
+                                                Archive Log: Received {new Date(payment.paid_date).toLocaleDateString()}
                                             </p>
                                         </div>
                                     )}
@@ -265,28 +230,25 @@ const PaymentTracker: React.FC<PaymentTrackerProps> = ({
                 })}
             </div>
 
-            <div className="mt-6 grid grid-cols-3 gap-4">
-                <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
-                    <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1">Received (Revenue)</p>
-                    <p className="text-xl font-black text-emerald-700">
-                        {formatCurrency(totalRevenue, currency)}
-                    </p>
-                </div>
-
-                <div className="p-4 bg-amber-50 rounded-xl border border-amber-100">
-                    <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest mb-1">Pending</p>
-                    <p className="text-xl font-black text-amber-700">
-                        {formatCurrency(totalPending, currency)}
-                    </p>
-                </div>
-
-                <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
-                    <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest mb-1">Total Expected</p>
-                    <p className="text-xl font-black text-blue-700">
-                        {formatCurrency(totalExpected, currency)}
-                    </p>
-                </div>
+            <div className="grid grid-cols-3 gap-6 pt-4">
+                <FinancialSummaryNode label="Received" value={formatCurrency(totalRevenue, currency)} color="emerald" />
+                <FinancialSummaryNode label="Pending" value={formatCurrency(totalPending, currency)} color="amber" />
+                <FinancialSummaryNode label="Projected" value={formatCurrency(totalExpected, currency)} color="blue" />
             </div>
+        </div>
+    );
+};
+
+const FinancialSummaryNode = ({ label, value, color }: any) => {
+    const colors: any = {
+        emerald: "bg-emerald-50 text-emerald-600",
+        amber: "bg-amber-50 text-amber-600",
+        blue: "bg-blue-50 text-blue-600",
+    };
+    return (
+        <div className={`p-4 rounded-2xl border border-transparent hover:shadow-sm transition-all ${colors[color]}`}>
+            <p className="text-[8px] font-black uppercase tracking-widest opacity-60 mb-1">{label}</p>
+            <p className="text-sm font-black tracking-tight">{value}</p>
         </div>
     );
 };

@@ -125,11 +125,12 @@ const ClientList: React.FC<ClientListProps> = ({ clients, projects, onAdd, onUpd
         </div>
         <button
           onClick={handleOpenAdd}
-          className="h-[60px] px-10 bg-[#2563EB] text-white rounded-[20px] text-[13px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/25 hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-3"
+          className="flex items-center gap-2.5 px-6 py-3 bg-[#2563EB] text-white rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:bg-blue-700 hover:-translate-y-0.5 transition-all"
         >
           <ICONS.Add />
           Add New Partner
         </button>
+
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -253,10 +254,11 @@ const ClientModal = ({ isOpen, onClose, onSubmit, initialData }: any) => {
             </div>
           </div>
 
-          <div className="flex justify-end gap-6 pt-6 border-t border-slate-100">
-            <button type="button" onClick={onClose} className="px-8 py-4 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:text-[#0A69E1] transition-colors">Cancel</button>
-            <button type="submit" className="h-[60px] px-10 bg-[#2563EB] text-white rounded-[20px] text-[13px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/25 hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center">Save Records</button>
+          <div className="flex justify-end gap-6 pt-6 border-t border-slate-100 items-center">
+            <button type="button" onClick={onClose} className="text-slate-400 font-bold uppercase text-[11px] tracking-widest hover:text-[#0A69E1] transition-colors">Cancel</button>
+            <button type="submit" className="flex items-center gap-2 px-6 py-3 bg-[#2563EB] text-white rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:bg-blue-700 hover:-translate-y-0.5 transition-all">Save Records</button>
           </div>
+
         </form>
       </div>
     </div>

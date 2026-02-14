@@ -184,7 +184,7 @@ const Settings: React.FC<SettingsProps> = ({ users, currentUsername, currentUser
                             onClick={() => setShowAddModal(true)}
                             disabled={!isAdmin}
                             title={!isAdmin ? 'Admin access required to add users' : ''}
-                            className="px-5 py-2.5 bg-[#2563EB] hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold rounded-xl transition-colors flex items-center gap-2"
+                            className="flex items-center gap-2 px-6 py-3 bg-[#2563EB] text-white rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-0.5 transition-all"
                         >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
                             Add user
@@ -353,21 +353,22 @@ const Settings: React.FC<SettingsProps> = ({ users, currentUsername, currentUser
                                     {isSuperadmin && <option value="Superadmin">Superadmin</option>}
                                 </select>
                             </div>
-                            <div className="flex gap-3 pt-4">
+                            <div className="flex gap-4 pt-4 items-center">
                                 <button
                                     type="button"
                                     onClick={() => { setEditingUser(null); setEditForm({ name: '', username: '', email: '', password: '', role: 'Admin' }); }}
-                                    className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50"
+                                    className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-500 font-bold uppercase text-[11px] tracking-widest hover:bg-slate-50 transition-all"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-1 py-3 rounded-xl bg-slate-800 text-white font-semibold hover:bg-slate-700"
+                                    className="flex-1 py-3 rounded-xl bg-slate-800 text-white font-black uppercase text-[11px] tracking-widest shadow-lg shadow-slate-200 hover:bg-slate-700 hover:-translate-y-0.5 transition-all"
                                 >
                                     Save changes
                                 </button>
                             </div>
+
                         </form>
                     </div>
                 </div>
@@ -432,21 +433,22 @@ const Settings: React.FC<SettingsProps> = ({ users, currentUsername, currentUser
                                     {isSuperadmin && <option value="Superadmin">Superadmin</option>}
                                 </select>
                             </div>
-                            <div className="flex gap-3 pt-4">
+                            <div className="flex gap-4 pt-4 items-center">
                                 <button
                                     type="button"
                                     onClick={() => setShowAddModal(false)}
-                                    className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50"
+                                    className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-500 font-bold uppercase text-[11px] tracking-widest hover:bg-slate-50 transition-all"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-1 py-3 rounded-xl bg-slate-800 text-white font-semibold hover:bg-slate-700"
+                                    className="flex-1 py-3 rounded-xl bg-slate-800 text-white font-black uppercase text-[11px] tracking-widest shadow-lg shadow-slate-200 hover:bg-slate-700 hover:-translate-y-0.5 transition-all"
                                 >
                                     Create user
                                 </button>
                             </div>
+
                         </form>
                     </div>
                 </div>

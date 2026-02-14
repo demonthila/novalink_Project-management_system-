@@ -83,11 +83,12 @@ const ProjectList: React.FC<ProjectListProps> = ({
           </div>
           <button
             onClick={onAdd}
-            className="w-full sm:w-auto h-[56px] sm:h-[60px] px-8 sm:px-10 bg-[#2563EB] text-white rounded-[16px] sm:rounded-[20px] text-xs sm:text-[13px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/25 hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-3"
+            className="flex items-center gap-2.5 px-6 py-3 bg-[#2563EB] text-white rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:bg-blue-700 hover:-translate-y-0.5 transition-all"
           >
             <ICONS.Add />
             Create Project
           </button>
+
         </div>
       </div>
 
@@ -149,7 +150,7 @@ const ProjectList: React.FC<ProjectListProps> = ({
                       </td>
                       <td className="px-6 sm:px-8 py-5">
                         <div className="flex items-center -space-x-1.5">
-                          {((detailsMap[p.id]?.developers) || (p.developers || []) ).slice(0, 3).map((d: any) => (
+                          {((detailsMap[p.id]?.developers) || (p.developers || [])).slice(0, 3).map((d: any) => (
                             <div key={d.id} className="w-7 h-7 rounded-full bg-[#0F172A] border-2 border-white flex items-center justify-center text-white text-[9px] font-black" title={d.name}>
                               {d.name ? d.name.split(' ').map((n: string) => n[0]).join('') : 'D'}
                             </div>
@@ -196,8 +197,8 @@ const ProjectList: React.FC<ProjectListProps> = ({
                       </td>
                       <td className="px-6 sm:px-8 py-5">
                         <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black tracking-widest uppercase ${p.status === 'Completed' ? 'bg-slate-100 text-slate-500' :
-                            p.status === 'Active' ? 'bg-blue-50 text-blue-600' :
-                              'bg-emerald-50 text-emerald-600'
+                          p.status === 'Active' ? 'bg-blue-50 text-blue-600' :
+                            'bg-emerald-50 text-emerald-600'
                           }`}>
                           {p.status}
                         </span>

@@ -17,10 +17,12 @@ interface ProjectModalProps {
   initialData?: Project | null;
 }
 
-const INPUT_CLASSES = "w-full h-[52px] px-5 bg-white border border-[#E2E8F0] rounded-xl text-[14px] font-bold text-[#0F172A] outline-none focus:border-[#2563EB] focus:ring-4 focus:ring-blue-500/5 transition-all placeholder:text-[#94A3B8] placeholder:font-medium";
-const LABEL_CLASSES = "text-[10px] sm:text-[11px] font-black text-[#475569] mb-2 block uppercase tracking-widest";
-const PRIMARY_BUTTON_CLASSES = "h-[60px] px-10 bg-[#2563EB] text-white rounded-[20px] text-[13px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/25 hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-3 w-full sm:w-auto";
-const SECTION_CONTAINER = "p-6 sm:p-8 border border-[#E2E8F0] rounded-[24px] sm:rounded-[32px] bg-white space-y-6 relative overflow-hidden";
+const INPUT_CLASSES = "w-full h-12 px-5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all placeholder:text-slate-400 placeholder:font-medium";
+const LABEL_CLASSES = "text-[10px] font-black text-slate-400 mb-2 block uppercase tracking-widest";
+const PRIMARY_BUTTON_CLASSES = "px-10 py-3 bg-blue-600 text-white rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:bg-blue-700 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2.5 w-full sm:w-auto";
+const SECTION_CONTAINER = "p-6 sm:p-10 border border-slate-100 rounded-[32px] bg-white shadow-sm space-y-8 relative overflow-hidden";
+const SECTION_HEADER = "flex items-center gap-4 mb-8 pb-4 border-b border-slate-50";
+
 
 const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, clients, developers, initialData }) => {
   const [formData, setFormData] = useState<any>({
@@ -40,7 +42,7 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
     if (initialData) {
       // Map initial data to form.
       // initialData comes from API (snake_case)
-        setFormData({
+      setFormData({
         id: initialData.id,
         name: initialData.name,
         client_id: initialData.client_id,
@@ -136,15 +138,15 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-md">
       <div className="bg-white sm:rounded-[40px] w-full max-w-4xl h-full sm:h-auto sm:max-h-[92vh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in-95 duration-300">
 
-        <div className="px-6 sm:px-12 py-8 sm:py-10 border-b border-[#F8FAFC] flex items-center justify-between sticky top-0 bg-white z-20">
+        <div className="px-8 sm:px-12 py-8 sm:py-10 border-b border-slate-50 flex items-center justify-between sticky top-0 bg-white/80 backdrop-blur-md z-20">
           <div>
-            <h2 className="text-xl sm:text-3xl font-black text-[#0F172A] tracking-tighter">
-              {initialData ? 'Update Project' : 'New Project'}
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+              {initialData ? 'Update Deployment' : 'Project Onboarding'}
             </h2>
-            <p className="text-xs sm:text-base text-[#94A3B8] font-medium mt-1">Strategic resource allocation and budgeting.</p>
+            <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-1">Resource allocation & Financial Matrix</p>
           </div>
-          <button onClick={onClose} className="p-2 sm:p-3 text-[#94A3B8] hover:text-[#0F172A] hover:bg-slate-50 rounded-2xl transition-all">
-            <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+          <button onClick={onClose} className="p-3 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all">
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
 
@@ -158,9 +160,14 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
           </div>
 
           <div className={SECTION_CONTAINER}>
-            <div className="flex items-center gap-3 text-[#2563EB] mb-4 sm:mb-8">
-              <ICONS.Info />
-              <h3 className="text-[10px] sm:text-[12px] font-black uppercase tracking-[0.2em]">Project Core</h3>
+            <div className={SECTION_HEADER}>
+              <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600">
+                <ICONS.Info />
+              </div>
+              <div>
+                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-800 leading-none">Project Identity</h3>
+                <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">Core meta-data and taxonomy</p>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
@@ -216,12 +223,17 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
 
           {/* Developers */}
           <div className={SECTION_CONTAINER}>
-            <div className="flex items-center justify-between mb-4 sm:mb-8">
-              <div className="flex items-center gap-3 text-indigo-600">
-                <ICONS.Teams />
-                <h3 className="text-[10px] sm:text-[12px] font-black uppercase tracking-[0.2em]">Developers & Costs</h3>
+            <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-50">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600">
+                  <ICONS.Teams />
+                </div>
+                <div>
+                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-800 leading-none">Human Resources</h3>
+                  <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">Squad allocation & technical payout</p>
+                </div>
               </div>
-              <button type="button" onClick={handleAddDeveloper} className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">+ Assign Developer</button>
+              <button type="button" onClick={handleAddDeveloper} className="px-4 py-2 bg-indigo-50 text-indigo-600 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-indigo-100 transition-colors">+ Assign</button>
             </div>
 
             <div className="space-y-4">
@@ -274,17 +286,38 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
 
           {/* Additional Costs */}
           <div className={SECTION_CONTAINER}>
-            <div className="flex items-center justify-between mb-4 sm:mb-8">
-              <div className="flex items-center gap-3 text-amber-600">
-                <ICONS.Finances />
-                <h3 className="text-[10px] sm:text-[12px] font-black uppercase tracking-[0.2em]">Additional Costs</h3>
+            <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-50">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600">
+                  <ICONS.Finances />
+                </div>
+                <div>
+                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-800 leading-none">Operational Costs</h3>
+                  <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">External overheads & assets</p>
+                </div>
               </div>
-              <button type="button" onClick={() => setFormData({ ...formData, additional_costs: [...formData.additional_costs, { description: '', amount: 0 }] })} className="text-[10px] font-black text-amber-600 uppercase tracking-widest">+ Add Cost</button>
+              <button type="button" onClick={() => setFormData({ ...formData, additional_costs: [...formData.additional_costs, { cost_type: 'Third Party Cost', description: '', amount: 0 }] })} className="px-4 py-2 bg-amber-50 text-amber-600 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-amber-100 transition-colors">+ New Expense</button>
             </div>
 
             <div className="space-y-4">
               {formData.additional_costs.map((cost: any, idx: number) => (
-                <div key={idx} className="p-6 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col sm:flex-row gap-4 sm:items-end">
+                <div key={idx} className="p-6 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col md:flex-row gap-4 md:items-end">
+                  <div className="flex-1 space-y-1">
+                    <label className={LABEL_CLASSES}>Cost Type</label>
+                    <select
+                      required
+                      className={INPUT_CLASSES}
+                      value={cost.cost_type || 'Third Party Cost'}
+                      onChange={e => {
+                        const newCosts = [...formData.additional_costs];
+                        newCosts[idx] = { ...newCosts[idx], cost_type: e.target.value };
+                        setFormData({ ...formData, additional_costs: newCosts });
+                      }}
+                    >
+                      <option value="Third Party Cost">Third Party Cost</option>
+                      <option value="Revision Cost">Revision Cost</option>
+                    </select>
+                  </div>
                   <div className="flex-[2] space-y-1">
                     <label className={LABEL_CLASSES}>Description</label>
                     <input
@@ -339,7 +372,8 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-end gap-4 pt-6 pb-12 sm:pb-0">
-            <button type="button" onClick={onClose} className="w-full sm:w-auto px-8 py-4 text-xs font-black text-[#64748B] uppercase tracking-[0.2em]">Discard</button>
+            <button type="button" onClick={onClose} className="w-full sm:w-auto px-10 py-3 text-[11px] font-black text-[#64748B] uppercase tracking-widest hover:text-[#0F172A] transition-all">Discard</button>
+
             <button type="submit" className={PRIMARY_BUTTON_CLASSES}>Save Project</button>
           </div>
         </form>
@@ -350,15 +384,19 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
 
 const FinancialWidget = ({ label, value, color, sub }: any) => {
   const colors: any = {
-    emerald: "bg-emerald-50 text-emerald-600 border-emerald-100",
-    blue: "bg-blue-50 text-blue-600 border-blue-100",
-    amber: "bg-amber-50 text-amber-600 border-amber-100",
+    emerald: "bg-emerald-50 text-emerald-600 border-emerald-100/50",
+    blue: "bg-blue-50 text-blue-600 border-blue-100/50",
+    amber: "bg-amber-50 text-amber-600 border-amber-100/50",
   };
   return (
-    <div className={`p-4 sm:p-6 rounded-[16px] sm:rounded-[24px] border ${colors[color]} shadow-sm`}>
-      <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.1em] opacity-80 mb-2">{label}</p>
-      <p className="text-xl sm:text-2xl font-black tracking-tighter leading-none mb-1">{value}</p>
-      <p className="text-[9px] font-bold opacity-70">{sub}</p>
+    <div className={`p-6 rounded-[24px] border border-transparent hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-500 overflow-hidden relative group ${colors[color]}`}>
+      <div className="absolute top-0 right-0 w-16 h-16 bg-white/20 blur-2xl rotate-45 translate-x-12 -translate-y-12 group-hover:translate-x-10 transition-transform duration-1000" />
+      <p className="text-[9px] font-black uppercase tracking-[0.15em] opacity-60 mb-1 leading-none">{label}</p>
+      <p className="text-2xl font-black tracking-tight leading-none mb-1.5">{value}</p>
+      <div className="flex items-center gap-2">
+        <div className="w-1 h-1 rounded-full bg-current opacity-40" />
+        <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest">{sub}</p>
+      </div>
     </div>
   );
 };

@@ -10,6 +10,7 @@ import PendingProjectManager from './components/PendingProjectManager';
 import Login from './components/Login';
 import ProjectModal from './components/ProjectModal';
 import Settings from './components/Settings';
+import ProjectDetailView from './components/ProjectDetailView';
 import PaymentTracker from './components/PaymentTracker';
 import { Client, Project, Developer, Notification, User } from './types';
 import {
@@ -397,95 +398,23 @@ const App: React.FC = () => {
 
 
       {selectedProjectForDetail && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" onClick={() => setSelectedProjectForDetail(null)}>
-          <div className="bg-white rounded-[40px] w-full max-w-6xl max-h-[90vh] overflow-y-auto p-6 sm:p-12 shadow-2xl border border-[#F1F5F9]" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-8 sm:mb-12 border-b border-[#F1F5F9] pb-8">
-              <div>
-                <h2 className="text-2xl sm:text-3xl font-bold text-[#0F172A] tracking-tight">{selectedProjectForDetail.name}</h2>
-                <p className="text-[#2563EB] font-bold text-xs uppercase tracking-widest mt-1">Project Detailed View</p>
-              </div>
-              <button onClick={() => setSelectedProjectForDetail(null)} className="p-3 bg-[#F8FAFC] hover:bg-rose-50 hover:text-rose-500 rounded-2xl transition-all"><ICONS.Delete /></button>
-            </div>
+        <ProjectDetailView
+          project={selectedProjectForDetail}
+          clients={clients}
+          developers={developers}
+          onClose={() => setSelectedProjectForDetail(null)}
+          onRefresh={async () => {
+            if (selectedProjectForDetail.id) {
+              const res = await fetch(`/api/projects.php?id=${selectedProjectForDetail.id}`);
+              const detail = await res.json();
+              setSelectedProjectForDetail(detail);
 
-            <div className="space-y-8">
-              {/* Project Overview */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-10">
-                <div className="space-y-6">
-                  <div className="p-6 bg-slate-50 rounded-3xl space-y-4">
-                    <h4 className="text-xs font-black text-[#94A3B8] uppercase tracking-widest">Client Context</h4>
-                    <p className="text-lg font-bold text-[#0F172A]">{clients.find(c => c.id === selectedProjectForDetail.client_id)?.company_name || 'Private'}</p>
-                  </div>
-                  <div className="p-6 bg-slate-50 rounded-3xl space-y-4">
-                    <h4 className="text-xs font-black text-[#94A3B8] uppercase tracking-widest">Budgeting</h4>
-                    <p className="text-2xl font-black text-[#0F172A]">{formatCurrency(calculateGrandTotal(selectedProjectForDetail), selectedProjectForDetail.currency)}</p>
-                  </div>
-                </div>
-                {/* Milestones / Payments */}
-                <div className="p-8 bg-blue-50 rounded-[40px] border border-blue-100">
-                  <h4 className="text-xs font-black text-[#2563EB] uppercase tracking-widest mb-4">Payment Schedule</h4>
-                  <div className="space-y-4">
-                    {/* If selectedProjectForDetail has payments loaded. If not, we might need to fetch them.
-                        My fetchProjects() API returns nested payments?
-                        Looking at Step 42 projects.php:
-                        GET /projects.php?id=X fetches nested payments.
-                        GET /projects.php (list) does NOT fetch nested payments usually, or does it?
-                        Step 42 lines 63-65: SELECT * FROM projects ... no joins.
-                        So 'projects' list doesn't have payments.
-                        So filtered projects passed here won't have payments.
-                        We need to fetch details when opening!
-                    */}
-                    {!selectedProjectForDetail.payments ? (
-                      <p className="text-sm">Loading details...</p>
-                    ) : (
-                      selectedProjectForDetail.payments.map((m, i) => (
-                        <div key={i} className="flex items-center justify-between py-2 border-b border-blue-100 last:border-0">
-                          <span className="text-sm font-bold text-[#1E3A8A]">Payment {m.payment_number}</span>
-                          <span className="text-sm font-black text-[#2563EB]">{formatCurrency(Number(m.amount), selectedProjectForDetail.currency)}</span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Payment Tracker - Only if payments exist */}
-              {selectedProjectForDetail.payments && (
-                <PaymentTracker
-                  projectId={selectedProjectForDetail.id}
-                  projectName={selectedProjectForDetail.name}
-                  milestones={selectedProjectForDetail.payments} // types.ts maps this
-                  currency={selectedProjectForDetail.currency}
-                  onPaymentUpdate={async () => {
-                    // Refetch this project details
-                    const updated = await fetchProjects(); // Should ideally fetch single
-                    // But fetchProjects returns list.
-                    // I need a fetchProject(id) in api.ts
-                    const single = await fetchProjects(); // Logic gap. I added fetchProject(id) to api.ts in Step 87.
-                    // But I need to import it.
-                    const freshData = await fetchProjects(); // Doing full refresh for valid list update
-                    setProjects(freshData);
-
-                    // Also update selected detail
-                    const p = freshData.find((proj: Project) => proj.id === selectedProjectForDetail.id);
-                    if (p) {
-                      // We need to fetch DETAILS for p because list doesn't have it.
-                      // Actually, my api.ts fetchProject(id) returns the details.
-                      // So I should use that.
-                    }
-                    // Quick fix: reload whole page or just trigger refreshData which updates list, 
-                    // but Detail View needs specific detail fetch.
-                    if (selectedProjectForDetail.id) {
-                      // Fetch detail
-                      const res = await fetch(`/api/projects.php?id=${selectedProjectForDetail.id}`);
-                      const detail = await res.json();
-                      setSelectedProjectForDetail(detail);
-                    }
-                  }}
-                />
-              )}
-            </div>
-          </div>
-        </div>
+              // Also refresh main list to keep data in sync
+              const freshData = await fetchProjects();
+              setProjects(freshData);
+            }
+          }}
+        />
       )}
 
       <ProjectModal
@@ -497,6 +426,7 @@ const App: React.FC = () => {
         initialData={editingProject}
       />
     </Layout>
+
   );
 };
 

@@ -42,11 +42,11 @@ elseif ($method === 'POST') {
         exit(json_encode(["error" => "Amount and Project ID required"]));
     }
 
-    $sql = "INSERT INTO additional_costs (project_id, name, description, amount) VALUES (?, ?, ?, ?)";
+    $sql = "INSERT INTO additional_costs (project_id, cost_type, description, amount) VALUES (?, ?, ?, ?)";
     $stmt = $pdo->prepare($sql);
     $stmt->execute([
         $data['projectId'],
-        $data['name'] ?? 'Cost',
+        $data['cost_type'] ?? 'Third Party Cost',
         $data['description'] ?? '',
         $data['amount']
     ]);

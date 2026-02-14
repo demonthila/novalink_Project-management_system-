@@ -53,10 +53,11 @@ const Login: React.FC<{ onLogin: (creds: { username: string; pass: string }) => 
 
           <button
             type="submit"
-            className="w-full bg-[#0A69E1] hover:bg-[#0857b8] text-white font-black py-5 rounded-[24px] shadow-2xl shadow-blue-600/30 transition-all active:scale-[0.98] uppercase tracking-[0.2em] text-sm"
+            className="w-full bg-[#0A69E1] hover:bg-[#0857b8] text-white font-black py-4 rounded-2xl shadow-xl shadow-blue-600/20 transition-all hover:-translate-y-0.5 uppercase tracking-widest text-[11px]"
           >
             Authenticate
           </button>
+
         </form>
 
         <div className="text-center pt-8 border-t border-slate-100">
