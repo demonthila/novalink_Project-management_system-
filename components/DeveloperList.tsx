@@ -129,7 +129,7 @@ const DeveloperList: React.FC<DeveloperListProps> = ({ developers, onAdd, onUpda
                     <button
                       onClick={() => handleViewProfile(d)}
                       className="w-10 h-10 rounded-full bg-[#0A69E1] text-white flex items-center justify-center font-black text-xs hover:scale-110 transition-transform">
-                      {d.name.split(' ').map(n => n[0]).join('')}
+                      {(d.name || 'D').split(' ').filter(n => n).map(n => n[0]).join('')}
                     </button>
                     <div>
                       <button
@@ -279,7 +279,7 @@ const DeveloperProfileModal = ({ dev, onClose, onEdit }: any) => {
         <div className="h-32 bg-[#0A69E1] relative">
           <div className="absolute -bottom-12 left-10">
             <div className="w-24 h-24 rounded-3xl bg-white text-[#0A69E1] flex items-center justify-center font-black text-3xl shadow-2xl border-4 border-white">
-              {dev.name.split(' ').map((n: string) => n[0]).join('')}
+              {(dev.name || 'D').split(' ').filter((n: string) => n).map((n: string) => n[0]).join('')}
             </div>
           </div>
           <button onClick={onClose} className="absolute top-6 right-6 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors"><ICONS.Delete /></button>

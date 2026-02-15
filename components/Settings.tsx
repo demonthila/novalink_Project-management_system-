@@ -264,7 +264,7 @@ const Settings: React.FC<SettingsProps> = ({ users, currentUsername, currentUser
                                         <td className="px-5 py-3">
                                             <div className="flex items-center gap-3">
                                                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 ${user.role === 'Superadmin' ? 'bg-indigo-600 text-white' : user.role === 'Admin' ? 'bg-slate-800 text-white' : 'bg-blue-100 text-blue-700'}`}>
-                                                    {user.name.split(/\s+/).map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                                                    {(user.name || 'U').split(/\s+/).filter(n => n).map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                                                 </div>
                                                 <span className="font-semibold text-slate-800">{user.name}</span>
                                                 {user.username === currentUsername && (
@@ -449,12 +449,11 @@ const Settings: React.FC<SettingsProps> = ({ users, currentUsername, currentUser
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Password</label>
                                 <input
-                                    required
                                     type="password"
                                     value={newUser.password}
                                     onChange={e => setNewUser(u => ({ ...u, password: e.target.value }))}
                                     className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-800 font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                                    placeholder="••••••••"
+                                    placeholder="•••••••• (Default: 123456)"
                                 />
                             </div>
                             <div>

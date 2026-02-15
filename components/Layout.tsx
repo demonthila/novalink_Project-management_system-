@@ -189,7 +189,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, onLo
                 <p className="text-[11px] font-medium text-[#64748B] uppercase">{currentUser?.role || 'Guest'}</p>
               </div>
               <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-[#0F172A] text-white flex items-center justify-center font-bold text-sm shadow-xl shadow-slate-200">
-                {(currentUser?.name || 'U').split(/\s+/).map((n: any) => n[0]).join('').slice(0, 2).toUpperCase()}
+                {(currentUser?.name || 'User').split(/\s+/).filter((n: string) => n).map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
               </div>
             </div>
 

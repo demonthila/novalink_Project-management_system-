@@ -152,7 +152,7 @@ const ProjectList: React.FC<ProjectListProps> = ({
                         <div className="flex items-center -space-x-1.5">
                           {((detailsMap[p.id]?.developers) || (p.developers || [])).slice(0, 3).map((d: any) => (
                             <div key={d.id} className="w-7 h-7 rounded-full bg-[#0F172A] border-2 border-white flex items-center justify-center text-white text-[9px] font-black" title={d.name}>
-                              {d.name ? d.name.split(' ').map((n: string) => n[0]).join('') : 'D'}
+                              {(d.name || 'D').split(' ').filter((n: string) => n).map((n: string) => n[0]).join('')}
                             </div>
                           ))}
                           {(((detailsMap[p.id]?.developers) || (p.developers || [])).length) > 3 && (

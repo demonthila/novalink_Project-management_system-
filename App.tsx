@@ -285,7 +285,8 @@ const App: React.FC = () => {
         localStorage.setItem('it_auth_user', JSON.stringify(user));
         toast.success(`Welcome back, ${user.name}`);
       } else {
-        toast.error(data.message || 'Invalid credentials');
+        const errorMsg = data.message || 'Login rejected by server';
+        toast.error(`${errorMsg} (Credentials used: ${creds.username})`);
       }
     } catch (err) {
       console.error('Login error', err);
@@ -301,138 +302,134 @@ const App: React.FC = () => {
     localStorage.removeItem('it_auth_user');
   };
 
-  if (!currentUser) return <Login onLogin={handleLogin} />;
-
   const pendingCount = projects.filter(p => p.status === 'Pending').length;
 
   return (
     <>
       <Toaster position="top-right" />
-      <Layout
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        onLogout={handleLogout}
-        notificationCount={notifications.filter((n: any) => !n.is_read).length}
-        pendingCount={pendingCount}
-        currentUser={currentUser}
-      >
+      {!currentUser ? (
+        <Login onLogin={handleLogin} />
+      ) : (
+        <Layout
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          onLogout={handleLogout}
+          notificationCount={notifications.filter((n: any) => !n.is_read).length}
+          pendingCount={pendingCount}
+          currentUser={currentUser}
+        >
+          {activeTab === 'dashboard' && (
+            <Dashboard
+              projects={projects}
+              clients={clients}
+              notifications={notifications}
+              onAddProject={() => { setEditingProject(null); setShowProjectModal(true); }}
+              onAddClient={() => setActiveTab('clients')}
+              onViewTeams={() => setActiveTab('teams')}
+            />
+          )}
 
-        {activeTab === 'dashboard' && (
-          <Dashboard
-            projects={projects}
-            clients={clients}
-            notifications={notifications}
-            onAddProject={() => { setEditingProject(null); setShowProjectModal(true); }}
-            onAddClient={() => setActiveTab('clients')}
-            onViewTeams={() => setActiveTab('teams')}
-          />
+          {activeTab === 'projects' && (
+            <ProjectList
+              projects={projects.filter(p => p.status === 'Active')}
+              clients={clients} developers={developers}
+              onAdd={() => { setEditingProject(null); setShowProjectModal(true); }}
+              onEdit={(p) => { setEditingProject(p); setShowProjectModal(true); }}
+              onView={(p) => setSelectedProjectForDetail(p)}
+              onDelete={handleDeleteProject}
+              onUpdate={(p) => handleSaveProject(p)}
+            />
+          )}
 
-        )}
+          {activeTab === 'pending' && (
+            <ProjectList
+              title="Pending Approval"
+              description="Projects awaiting client or internal approval."
+              projects={projects.filter(p => p.status === 'Pending')}
+              clients={clients}
+              developers={developers}
+              onAdd={() => { setEditingProject(null); setShowProjectModal(true); }}
+              onEdit={(p) => { setEditingProject(p); setShowProjectModal(true); }}
+              onView={(p) => setSelectedProjectForDetail(p)}
+              onDelete={handleDeleteProject}
+              onUpdate={(p) => handleSaveProject(p)}
+            />
+          )}
 
-        {activeTab === 'projects' && (
-          <ProjectList
-            projects={projects.filter(p => p.status === 'Active')}
-            clients={clients} developers={developers}
-            onAdd={() => { setEditingProject(null); setShowProjectModal(true); }}
-            onEdit={(p) => { setEditingProject(p); setShowProjectModal(true); }}
-            onView={(p) => setSelectedProjectForDetail(p)}
-            onDelete={handleDeleteProject}
-            onUpdate={(p) => handleSaveProject(p)}
-          />
-        )}
+          {activeTab === 'archived' && (
+            <ProjectList
+              title="Historical Project Archive"
+              description="View completed or cancelled projects."
+              projects={projects.filter(p => ['Completed', 'Cancelled'].includes(p.status))}
+              clients={clients} developers={developers}
+              onAdd={() => { setEditingProject(null); setShowProjectModal(true); }}
+              onEdit={(p) => { setEditingProject(p); setShowProjectModal(true); }}
+              onView={(p) => setSelectedProjectForDetail(p)}
+              onDelete={handleDeleteProject}
+              onUpdate={(p) => handleSaveProject(p)}
+            />
+          )}
 
-        {activeTab === 'pending' && (
-          <ProjectList
-            title="Pending Approval"
-            description="Projects awaiting client or internal approval."
-            projects={projects.filter(p => p.status === 'Pending')}
+          {activeTab === 'clients' && (
+            <ClientList
+              clients={clients}
+              projects={projects}
+              onAdd={() => refreshData()}
+              onUpdate={() => refreshData()}
+              onDelete={() => refreshData()}
+            />
+          )}
+
+          {activeTab === 'teams' && (
+            <DeveloperList
+              developers={developers}
+              onAdd={() => refreshData()}
+              onUpdate={() => refreshData()}
+              onDelete={() => refreshData()}
+            />
+          )}
+
+          {activeTab === 'settings' && (
+            <Settings
+              users={settingsUsers}
+              currentUsername={currentUser.username}
+              currentUserRole={currentUser.role}
+              usersLoading={settingsUsersLoading}
+              adminOnlyMessage={settingsUsersAdminOnly}
+              onAddUser={handleAddUser}
+              onDeleteUser={handleDeleteUser}
+              onEditUser={handleEditUser}
+            />
+          )}
+
+          {selectedProjectForDetail && (
+            <ProjectDetailView
+              project={selectedProjectForDetail}
+              clients={clients}
+              developers={developers}
+              onClose={() => setSelectedProjectForDetail(null)}
+              onRefresh={async () => {
+                if (selectedProjectForDetail.id) {
+                  const res = await fetch(`/api/projects.php?id=${selectedProjectForDetail.id}`);
+                  const detail = await res.json();
+                  setSelectedProjectForDetail(detail);
+                  const freshData = await fetchProjects();
+                  setProjects(freshData);
+                }
+              }}
+            />
+          )}
+
+          <ProjectModal
+            isOpen={showProjectModal}
+            onClose={() => { setShowProjectModal(false); setEditingProject(null); }}
+            onSubmit={handleSaveProject}
             clients={clients}
             developers={developers}
-            onAdd={() => { setEditingProject(null); setShowProjectModal(true); }}
-            onEdit={(p) => { setEditingProject(p); setShowProjectModal(true); }}
-            onView={(p) => setSelectedProjectForDetail(p)}
-            onDelete={handleDeleteProject}
-            onUpdate={(p) => handleSaveProject(p)}
+            initialData={editingProject}
           />
-        )}
-
-        {activeTab === 'archived' && (
-          <ProjectList
-            title="Historical Project Archive"
-            description="View completed or cancelled projects."
-            projects={projects.filter(p => ['Completed', 'Cancelled'].includes(p.status))}
-            clients={clients} developers={developers}
-            onAdd={() => { setEditingProject(null); setShowProjectModal(true); }}
-            onEdit={(p) => { setEditingProject(p); setShowProjectModal(true); }}
-            onView={(p) => setSelectedProjectForDetail(p)}
-            onDelete={handleDeleteProject}
-            onUpdate={(p) => handleSaveProject(p)}
-          />
-        )}
-
-        {/* Simplified TaskBoard placeholder or reimplement if Task API exists. 
-            Assuming users want project management primarily based on requirements. 
-            Will hide or default to ProjectList if tasks not core requirement in prompt 
-            (Prompt mentions "Project Management ... Add, edit, delete projects..."). 
-            It mentions "TaskBoard" in original file list but prompt didn't explicitly ask for task management features beyond projects.
-            It'll leave it but commented out or minimal if TaskBoard.tsx requires complex refactor. 
-            Actually, I'll just render it if it works with project data. 
-            TaskBoard.tsx likely relies on 'tasks' array in project. My schema removed tasks table in favor of simplicty?
-            Wait, schema did NOT include tasks table. Prompt didn't ask for tasks within projects.
-            So TaskBoard might be broken. I'll skip it effectively.
-        */}
-
-        {activeTab === 'clients' && (
-          <ClientList
-            clients={clients}
-            projects={projects}
-            onAdd={() => refreshData()}
-            onUpdate={() => refreshData()}
-            onDelete={() => refreshData()}
-          />
-        )}
-
-        {activeTab === 'teams' && (
-          <DeveloperList
-            developers={developers}
-            onAdd={() => refreshData()}
-            onUpdate={() => refreshData()}
-            onDelete={() => refreshData()}
-          />
-        )}
-
-        {activeTab === 'settings' && <Settings users={settingsUsers} currentUsername={currentUser.username} currentUserRole={currentUser.role} usersLoading={settingsUsersLoading} adminOnlyMessage={settingsUsersAdminOnly} onAddUser={handleAddUser} onDeleteUser={handleDeleteUser} onEditUser={handleEditUser} />}
-
-
-        {selectedProjectForDetail && (
-          <ProjectDetailView
-            project={selectedProjectForDetail}
-            clients={clients}
-            developers={developers}
-            onClose={() => setSelectedProjectForDetail(null)}
-            onRefresh={async () => {
-              if (selectedProjectForDetail.id) {
-                const res = await fetch(`/api/projects.php?id=${selectedProjectForDetail.id}`);
-                const detail = await res.json();
-                setSelectedProjectForDetail(detail);
-
-                // Also refresh main list to keep data in sync
-                const freshData = await fetchProjects();
-                setProjects(freshData);
-              }
-            }}
-          />
-        )}
-
-        <ProjectModal
-          isOpen={showProjectModal}
-          onClose={() => { setShowProjectModal(false); setEditingProject(null); }}
-          onSubmit={handleSaveProject}
-          clients={clients}
-          developers={developers}
-          initialData={editingProject}
-        />
-      </Layout>
+        </Layout>
+      )}
     </>
   );
 };

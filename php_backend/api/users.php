@@ -1,5 +1,5 @@
 <?php
-// api/users.php - List and delete users (Admin only)
+// api/users.php - List, create and delete users (Admin only)
 session_start();
 require_once 'config.php';
 
@@ -28,6 +28,57 @@ if ($method === 'GET') {
             unset($u['created_at']);
         }
         echo json_encode(["success" => true, "users" => $users]);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(["success" => false, "message" => $e->getMessage()]);
+    }
+    exit;
+}
+
+// POST = create new user (Admin/Superadmin only)
+if ($method === 'POST') {
+    if (empty($_SESSION['user_role']) || !in_array($_SESSION['user_role'], ['Superadmin', 'Admin'])) {
+        http_response_code(403);
+        echo json_encode(["success" => false, "message" => "Admin access required"]);
+        exit;
+    }
+    
+    $data = json_decode(file_get_contents('php://input'), true) ?? [];
+    
+    $email = trim($data['email'] ?? '');
+    $password = $data['password'] ?? '';
+    $name = trim($data['name'] ?? '');
+    $role = $data['role'] ?? 'User';
+    
+    if (empty($email) || empty($password) || empty($name)) {
+        echo json_encode(["success" => false, "message" => "Email, password and name are required"]);
+        exit;
+    }
+    
+    if (!in_array($role, ['Superadmin', 'Admin', 'User'])) {
+        $role = 'User';
+    }
+    
+    // Only Superadmin can create Superadmin
+    if ($role === 'Superadmin' && $_SESSION['user_role'] !== 'Superadmin') {
+        echo json_encode(["success" => false, "message" => "Only Superadmins can create Superadmin users"]);
+        exit;
+    }
+    
+    try {
+        // Check if email already exists
+        $check = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+        $check->execute([$email]);
+        if ($check->rowCount() > 0) {
+            echo json_encode(["success" => false, "message" => "Email already exists"]);
+            exit;
+        }
+        
+        $hash = password_hash($password, PASSWORD_DEFAULT);
+        $stmt = $pdo->prepare("INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)");
+        $stmt->execute([$name, $email, $hash, $role]);
+        
+        echo json_encode(["success" => true, "message" => "User created successfully", "id" => $pdo->lastInsertId()]);
     } catch (PDOException $e) {
         http_response_code(500);
         echo json_encode(["success" => false, "message" => $e->getMessage()]);

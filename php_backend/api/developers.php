@@ -1,21 +1,50 @@
 <?php
 // api/developers.php
+session_start();
 require_once 'config.php';
+
+// Check authentication for write operations
+$method = $_SERVER['REQUEST_METHOD'];
+if (in_array($method, ['POST', 'PUT', 'DELETE'])) {
+    if (!isset($_SESSION['user_id'])) {
+        http_response_code(403);
+        echo json_encode(["success" => false, "message" => "Authentication required"]);
+        exit;
+    }
+}
 
 $method = $_SERVER['REQUEST_METHOD'];
 $id = isset($_GET['id']) ? intval($_GET['id']) : null;
 
 if ($method === 'GET') {
-    if ($id) {
-        $stmt = $pdo->prepare("SELECT * FROM developers WHERE id = ?");
-        $stmt->execute([$id]);
-        echo json_encode($stmt->fetch());
-    } else {
-        $stmt = $pdo->query("SELECT * FROM developers ORDER BY name ASC");
-        echo json_encode($stmt->fetchAll());
+    try {
+        // Simple check for name vs full_name
+        $stmtCol = $pdo->query("SHOW COLUMNS FROM developers LIKE 'name'");
+        $hasName = $stmtCol->rowCount() > 0;
+        $nameCol = $hasName ? 'name' : 'full_name';
+
+        if ($id) {
+            $stmt = $pdo->prepare("SELECT * FROM developers WHERE id = ?");
+            $stmt->execute([$id]);
+            $dev = $stmt->fetch();
+            if ($dev && !$hasName && isset($dev['full_name'])) {
+                $dev['name'] = $dev['full_name'];
+            }
+            echo json_encode($dev);
+        } else {
+            $stmt = $pdo->query("SELECT * FROM developers ORDER BY $nameCol ASC");
+            $list = $stmt->fetchAll();
+            if (!$hasName) {
+                foreach($list as &$d) {
+                    if (isset($d['full_name'])) $d['name'] = $d['full_name'];
+                }
+            }
+            echo json_encode($list);
+        }
+    } catch (Throwable $e) {
+        echo json_encode([]); // Return empty list instead of crashing if table missing
     }
 }
-
 elseif ($method === 'POST') {
     $data = getJsonInput();
     

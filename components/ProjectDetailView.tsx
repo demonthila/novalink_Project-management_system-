@@ -324,7 +324,7 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
                                                 <div key={idx} className="p-6 flex items-center justify-between hover:bg-slate-50/50 transition-colors">
                                                     <div className="flex items-center gap-4">
                                                         <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center text-[10px] font-black">
-                                                            {pd.name?.split(' ').map((n: string) => n[0]).join('') || 'D'}
+                                                            {(pd.name || 'D').split(' ').filter((n: string) => n).map((n: string) => n[0]).join('')}
                                                         </div>
                                                         <div>
                                                             <p className="text-sm font-black text-slate-900">{pd.name}</p>

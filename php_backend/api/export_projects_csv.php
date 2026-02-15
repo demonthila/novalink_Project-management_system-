@@ -17,8 +17,13 @@ try {
     // Fetch projects
     $projects = $pdo->query("SELECT p.*, c.name as client_name, c.email as client_email FROM projects p LEFT JOIN clients c ON p.client_id = c.id ORDER BY p.id ASC")->fetchAll(PDO::FETCH_ASSOC);
 
+    // Robust check for developer name column
+    $stmtCol = $pdo->query("SHOW COLUMNS FROM developers LIKE 'name'");
+    $hasDevName = $stmtCol->rowCount() > 0;
+    $dName = $hasDevName ? 'd.name' : 'd.full_name as name';
+
     // Prepare statements for related data
-    $devStmt = $pdo->prepare("SELECT d.name, d.role, pd.cost, IFNULL(pd.is_advance_paid,0) AS is_advance_paid, IFNULL(pd.is_final_paid,0) AS is_final_paid FROM project_developers pd JOIN developers d ON d.id = pd.developer_id WHERE pd.project_id = ?");
+    $devStmt = $pdo->prepare("SELECT $dName, d.role, pd.cost, IFNULL(pd.is_advance_paid,0) AS is_advance_paid, IFNULL(pd.is_final_paid,0) AS is_final_paid FROM project_developers pd JOIN developers d ON d.id = pd.developer_id WHERE pd.project_id = ?");
     $addStmt = $pdo->prepare("SELECT description, amount FROM additional_costs WHERE project_id = ?");
     $payStmt = $pdo->prepare("SELECT payment_number, amount, due_date, status FROM payments WHERE project_id = ? ORDER BY payment_number ASC");
 

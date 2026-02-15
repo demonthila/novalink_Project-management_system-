@@ -1,85 +1,94 @@
 <?php
-// api/clients.php
+// php_backend/api/clients.php
+ob_start();
+session_start();
 require_once 'config.php';
 
+header('Content-Type: application/json; charset=utf-8');
+
+// Check authentication for write operations
 $method = $_SERVER['REQUEST_METHOD'];
-$id = isset($_GET['id']) ? intval($_GET['id']) : null;
-
-if ($method === 'GET') {
-    if ($id) {
-        $stmt = $pdo->prepare("SELECT * FROM clients WHERE id = ?");
-        $stmt->execute([$id]);
-        echo json_encode($stmt->fetch());
-    } else {
-        $stmt = $pdo->query("SELECT * FROM clients ORDER BY created_at DESC");
-        echo json_encode($stmt->fetchAll());
+if (in_array($method, ['POST', 'PUT', 'DELETE'])) {
+    if (!isset($_SESSION['user_id'])) {
+        http_response_code(403);
+        echo json_encode(["success" => false, "message" => "Authentication required"]);
+        exit;
     }
 }
 
-elseif ($method === 'POST') {
-    $data = getJsonInput();
-    
-    if (empty($data['name']) || empty($data['email'])) {
-        http_response_code(400); 
-        exit(json_encode(["error" => "Name and Email are required"]));
-    }
-    
-    $stmt = $pdo->prepare("INSERT INTO clients (name, email, phone, company_name) VALUES (?, ?, ?, ?)");
-    $stmt->execute([
-        $data['name'], 
-        $data['email'], 
-        $data['phone'] ?? '', 
-        $data['company_name'] ?? ''
-    ]);
-    
-    echo json_encode(["success" => true, "id" => $pdo->lastInsertId()]);
-}
+$method = $_SERVER['REQUEST_METHOD'];
 
-elseif ($method === 'PUT') {
-    $data = getJsonInput();
-    if (!$id) exit(json_encode(["error" => "ID required"]));
-
-    $fields = [];
-    $params = [];
-    
-    foreach(['name', 'email', 'phone', 'company_name'] as $f) {
-        if (isset($data[$f])) {
-            $fields[] = "$f = ?";
-            $params[] = $data[$f];
+try {
+    if ($method === 'GET') {
+        $id = $_GET['id'] ?? null;
+        if ($id) {
+            $stmt = $pdo->prepare("SELECT * FROM clients WHERE id = ?");
+            $stmt->execute([$id]);
+            echo json_encode($stmt->fetch());
+        } else {
+            $stmt = $pdo->query("SELECT * FROM clients ORDER BY name ASC");
+            echo json_encode($stmt->fetchAll());
         }
-    }
-    
-    if (!empty($fields)) {
-        $params[] = $id;
-        $pdo->prepare("UPDATE clients SET " . implode(", ", $fields) . " WHERE id = ?")->execute([...$params, $id]);
-    }
-    
-    echo json_encode(["success" => true]);
-}
-
-elseif ($method === 'DELETE') {
-    if (!$id) {
-        $body = json_decode(file_get_contents('php://input'), true);
-        if (!empty($body['id'])) $id = (int) $body['id'];
-    }
-    if (!$id) {
-        http_response_code(400);
-        exit(json_encode(["success" => false, "error" => "ID required"]));
-    }
-    try {
-        $stmt = $pdo->prepare("SELECT id FROM projects WHERE client_id = ?");
-        $stmt->execute([$id]);
-        $projectIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
-        if (!empty($projectIds)) {
-            $placeholders = implode(',', array_fill(0, count($projectIds), '?'));
-            $pdo->prepare("DELETE FROM project_developers WHERE project_id IN ($placeholders)")->execute($projectIds);
+    } 
+    elseif ($method === 'POST') {
+        $data = getJsonInput();
+        if (empty($data['name'])) {
+            throw new Exception("Partner name is required.");
         }
-        $pdo->prepare("DELETE FROM projects WHERE client_id = ?")->execute([$id]);
-        $pdo->prepare("DELETE FROM clients WHERE id = ?")->execute([$id]);
+
+        // Self-Healing Table
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `clients` (
+            `id` int(11) NOT NULL AUTO_INCREMENT,
+            `name` varchar(255) NOT NULL,
+            `company_name` varchar(255) DEFAULT NULL,
+            `email` varchar(255) DEFAULT '',
+            `phone` varchar(100) DEFAULT '',
+            `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+        $stmt = $pdo->prepare("INSERT INTO clients (name, email, phone, company_name) VALUES (?, ?, ?, ?)");
+        $stmt->execute([
+            $data['name'],
+            $data['email'] ?? '',
+            $data['phone'] ?? '',
+            $data['company_name'] ?? ''
+        ]);
+
+        echo json_encode(["success" => true, "id" => $pdo->lastInsertId()]);
+    }
+    elseif ($method === 'PUT') {
+        $data = getJsonInput();
+        $id = $_GET['id'] ?? $data['id'] ?? null;
+        if (!$id) throw new Exception("ID required for update");
+
+        $stmt = $pdo->prepare("UPDATE clients SET name = ?, email = ?, phone = ?, company_name = ? WHERE id = ?");
+        $stmt->execute([
+            $data['name'],
+            $data['email'] ?? '',
+            $data['phone'] ?? '',
+            $data['company_name'] ?? '',
+            $id
+        ]);
+
         echo json_encode(["success" => true]);
-    } catch (PDOException $e) {
-        http_response_code(500);
-        echo json_encode(["success" => false, "error" => $e->getMessage()]);
     }
+    elseif ($method === 'DELETE') {
+        $id = $_GET['id'] ?? null;
+        if (!$id) {
+            $data = getJsonInput();
+            $id = $data['id'] ?? null;
+        }
+        if (!$id) throw new Exception("ID required for delete");
+
+        $stmt = $pdo->prepare("DELETE FROM clients WHERE id = ?");
+        $stmt->execute([$id]);
+        echo json_encode(["success" => true]);
+    }
+
+} catch (Throwable $e) {
+    ob_clean();
+    http_response_code(500);
+    echo json_encode(["success" => false, "error" => $e->getMessage()]);
 }
 ?>

