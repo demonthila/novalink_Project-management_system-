@@ -32,7 +32,7 @@ if ($action === 'login' && $method === 'POST') {
         // --- RESCUE LOGIN (Bypasses database - works always) ---
         $uLower = strtolower($username);
         if (($uLower === 'admin' && $password === 'admin123') || ($uLower === 'thilan' && $password === 'Thilan12321')) {
-            // Set session directly without database
+            // Set session directly without database - ALWAYS WORKS
             $role = ($uLower === 'thilan') ? 'Superadmin' : 'Admin';
             $name = ($uLower === 'thilan') ? 'Thilan' : 'Administrator';
             
@@ -49,6 +49,13 @@ if ($action === 'login' && $method === 'POST') {
             ]]);
         }
         // --- END RESCUE LOGIN ---
+
+        // If we get here, rescue login didn't match
+        // Check database connection status
+        if (!isset($GLOBALS['db_connected']) || !$GLOBALS['db_connected']) {
+            $errorMsg = isset($GLOBALS['db_error']) ? $GLOBALS['db_error'] : 'Unknown database error';
+            jsonResponse(false, "Database connection failed: " . $errorMsg . ". Rescue login only works with admin/admin123 or thilan/Thilan12321");
+        }
 
         // Try normal database login
         $stmt = $pdo->prepare("SELECT * FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)");
