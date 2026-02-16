@@ -1,7 +1,7 @@
 <?php
 // api/projects.php
 session_start();
-require_once 'config.php';
+require_once __DIR__ . '/config.php';
 
 // Authentication disabled for testing - frontend auto-login bypasses session
 // if (!isset($_SESSION['user_id'])) {
@@ -87,14 +87,17 @@ elseif ($method === 'POST') {
 
         // 1. Insert Project
         $revenue = isset($data['total_revenue']) ? (float)$data['total_revenue'] : 0;
+        $startDate = !empty($data['start_date']) ? $data['start_date'] : null;
+        $endDate = !empty($data['end_date']) ? $data['end_date'] : null;
+
         $sql = "INSERT INTO projects (name, client_id, start_date, end_date, status, total_revenue, currency, notes) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
             $data['name'],
             $data['client_id'],
-            $data['start_date'] ?? null,
-            $data['end_date'] ?? null,
+            $startDate,
+            $endDate,
             $data['status'] ?? 'Pending',
             $revenue,
             $data['currency'] ?? 'USD',
@@ -108,8 +111,10 @@ elseif ($method === 'POST') {
         if (!empty($data['developers'])) {
             $dStmt = $pdo->prepare("INSERT INTO project_developers (project_id, developer_id, cost, is_advance_paid, is_final_paid) VALUES (?, ?, ?, ?, ?)");
             foreach ($data['developers'] as $dev) {
-                $cost = (float)$dev['cost'];
                 $devId = isset($dev['id']) ? intval($dev['id']) : 0;
+                if ($devId <= 0) continue; // SKIP if no developer selected
+
+                $cost = (float)$dev['cost'];
                 $isAdvance = !empty($dev['is_advance_paid']) ? 1 : 0;
                 $isFinal = !empty($dev['is_final_paid']) ? 1 : 0;
                 $dStmt->execute([$projectId, $devId, $cost, $isAdvance, $isFinal]);
@@ -124,9 +129,10 @@ elseif ($method === 'POST') {
         if (!empty($data['additional_costs'])) {
             $cStmt = $pdo->prepare("INSERT INTO additional_costs (project_id, cost_type, description, amount) VALUES (?, ?, ?, ?)");
             foreach ($data['additional_costs'] as $cost) {
-                $amount = (float)$cost['amount'];
+                if (empty($cost['description']) && empty($cost['amount'])) continue; // SKIP empty rows
+                $amount = (float)($cost['amount'] ?? 0);
                 $costType = $cost['cost_type'] ?? 'Third Party Cost';
-                $cStmt->execute([$projectId, $costType, $cost['description'], $amount]);
+                $cStmt->execute([$projectId, $costType, $cost['description'] ?? '', $amount]);
                 $totalAddCost += $amount;
             }
         }
@@ -277,4 +283,3 @@ elseif ($method === 'DELETE') {
     $stmt->execute([$id]);
     echo json_encode(["success" => true, "message" => "Project deleted"]);
 }
-?>

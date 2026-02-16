@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Client, Project } from '../types';
 import { ICONS } from '../constants';
-import { createClient, updateProject } from '../services/api';
+import { createClient, updateClient, deleteClient } from '../services/api';
 import { toast } from 'react-hot-toast';
 
 // Note: onAdd/onUpdate props in ClientList are usually wrappers around API calls in App.tsx. 
@@ -65,50 +65,39 @@ const ClientList: React.FC<ClientListProps> = ({ clients, projects, onAdd, onUpd
 
   const handleSubmit = async (data: any) => {
     try {
-      let res;
+      let result;
       if (editingClient) {
-        // Update
-        res = await fetch(`/api/clients.php?id=${editingClient.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        });
+        result = await updateClient(editingClient.id, data);
       } else {
-        // Create
-        res = await fetch(`/api/clients.php`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        });
+        result = await createClient(data);
       }
-      const json = await res.json();
-      if (json.success) {
+
+      if (result.success) {
         setShowModal(false);
         onAdd(); // Trigger refresh
         toast.success(editingClient ? 'Partner record updated' : 'New partner onboarded');
       } else {
-        toast.error("Error: " + json.error);
+        toast.error("Error: " + (result.error || result.message || 'Unknown error'));
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      toast.error("Failed to save client record");
+      toast.error(e.message || "Failed to save client record");
     }
   };
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this client? Their projects will also be removed.")) return;
     try {
-      const res = await fetch(`/api/clients.php?id=${id}`, { method: 'DELETE' });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.success) {
+      const result = await deleteClient(id);
+      if (result.success) {
         onDelete(id);
         toast.success('Partner record removed');
       } else {
-        toast.error(data.error || data.message || "Could not delete client.");
+        toast.error("Delete Failed: " + (result.error || result.message));
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      toast.error("Failed to delete client.");
+      toast.error(e.message || "Failed to remove client record");
     }
   };
 

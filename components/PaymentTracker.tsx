@@ -9,7 +9,7 @@ interface PaymentTrackerProps {
     projectName: string;
     milestones: Payment[]; // Renamed internally to match prop usage context, but Type is Payment
     currency: string;
-    onPaymentUpdate: (milestoneId: number, isPaid: boolean, paidDate: string) => void;
+    onPaymentUpdate: () => void;
 }
 
 const PaymentTracker: React.FC<PaymentTrackerProps> = ({
@@ -36,7 +36,7 @@ const PaymentTracker: React.FC<PaymentTrackerProps> = ({
             const data = await updatePayment(paymentId, { status: newStatus, paid_date: paidDate });
 
             if (data.success) {
-                onPaymentUpdate(paymentId, newStatus === 'Paid', paidDate || '');
+                onPaymentUpdate();
             } else {
                 setError('Failed to update payment status');
             }
@@ -59,7 +59,7 @@ const PaymentTracker: React.FC<PaymentTrackerProps> = ({
                 // For now, let's call onPaymentUpdate to trigger refresh if parent supports generic updates, 
                 // but onPaymentUpdate signature is specific to paid status.
                 // Ideally, we should have onRefresh() prop.
-                window.location.reload();
+                onPaymentUpdate();
             } else {
                 setError('Failed to update due date');
             }
@@ -177,7 +177,7 @@ const PaymentTracker: React.FC<PaymentTrackerProps> = ({
                                         <div className="flex items-center gap-3">
                                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Milestone {index + 1}</p>
                                             <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest ${isPaid ? 'bg-emerald-100 text-emerald-600' :
-                                                    status.label === 'Overdue' ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-500'
+                                                status.label === 'Overdue' ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-500'
                                                 }`}>
                                                 {status.label}
                                             </span>

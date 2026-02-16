@@ -10,9 +10,10 @@ interface LayoutProps {
   notificationCount: number;
   pendingCount: number;
   currentUser: any;
+  apiError?: string | null;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, onLogout, notificationCount, pendingCount, currentUser }) => {
+const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, onLogout, notificationCount, pendingCount, currentUser, apiError }) => {
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -197,6 +198,21 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, onLo
         </header>
 
         <div className="p-5 sm:p-6 lg:p-8 max-w-[1400px] mx-auto w-full min-h-0">
+          {apiError && (
+            <div className="mb-6 p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-3 text-rose-600 animate-in fade-in slide-in-from-top-4 duration-300">
+              <ICONS.Logout /> {/* Use an icon that looks like a warning if available, otherwise Logout looks like exit/stop */}
+              <div className="flex-1">
+                <p className="text-[13px] font-bold uppercase tracking-tight">Backend Connection Issue</p>
+                <p className="text-[12px] font-medium opacity-80">{apiError}</p>
+              </div>
+              <button
+                onClick={() => window.location.reload()}
+                className="px-4 py-2 bg-rose-600 text-white rounded-lg text-[11px] font-bold uppercase hover:bg-rose-700 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          )}
           {children}
         </div>
       </main>

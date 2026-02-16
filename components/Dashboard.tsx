@@ -85,6 +85,9 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, clients, notifications,
 
   useEffect(() => {
     fetchDashboard();
+  }, [projects, clients, notifications]);
+
+  useEffect(() => {
     const handleCurrencyChange = () => fetchDashboard();
     window.addEventListener('stratis-currency-change', handleCurrencyChange);
     return () => window.removeEventListener('stratis-currency-change', handleCurrencyChange);

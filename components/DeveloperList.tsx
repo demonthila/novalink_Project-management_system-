@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { Developer } from '../types';
+import { createDeveloper, updateDeveloper, deleteDeveloper } from '../services/api';
 import { ICONS } from '../constants';
 import { toast } from 'react-hot-toast';
 
@@ -40,49 +41,39 @@ const DeveloperList: React.FC<DeveloperListProps> = ({ developers, onAdd, onUpda
 
   const handleSubmit = async (data: any) => {
     try {
-      let res;
+      let result;
       if (editingDev) {
-        res = await fetch(`/api/developers.php?id=${editingDev.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        });
+        result = await updateDeveloper(editingDev.id, data);
       } else {
-        // Use new onboarding endpoint for creating developers
-        res = await fetch(`/api/add_developer.php`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        });
+        result = await createDeveloper(data);
       }
-      const json = await res.json();
-      if (json.success) {
+
+      if (result.success) {
         setShowModal(false);
         onAdd(); // Refresh
         toast.success(editingDev ? 'Team member updated' : 'New developer onboarded');
       } else {
-        toast.error("Error: " + (json.error || "Failed"));
+        toast.error("Error: " + (result.error || result.message || "Failed"));
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      toast.error("Failed to save developer record");
+      toast.error(e.message || "Failed to save developer record");
     }
   };
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this developer? They will be removed from all project assignments.")) return;
     try {
-      const res = await fetch(`/api/developers.php?id=${id}`, { method: 'DELETE' });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.success) {
+      const result = await deleteDeveloper(id);
+      if (result.success) {
         onDelete(id);
         toast.success('Team member removed');
       } else {
-        toast.error(data.error || data.message || "Could not delete developer.");
+        toast.error("Delete Failed: " + (result.error || result.message));
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      toast.error("Failed to delete developer.");
+      toast.error(e.message || "Failed to delete developer.");
     }
   };
 

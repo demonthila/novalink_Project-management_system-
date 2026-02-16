@@ -36,6 +36,7 @@ const App: React.FC = () => {
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [settingsUsers, setSettingsUsers] = useState<User[]>([]);
 
   // Check Auth on mount - TEMPORARILY BYPASSED FOR TESTING
@@ -51,7 +52,7 @@ const App: React.FC = () => {
     };
     setCurrentUser(user);
     localStorage.setItem('it_auth_user', JSON.stringify(user));
-    
+
     /*
     const verifyAuth = async () => {
       try {
@@ -96,6 +97,7 @@ const App: React.FC = () => {
     const loadData = async () => {
       try {
         setLoading(true);
+        setApiError(null);
         const [pData, cData, dData, nData] = await Promise.all([
           fetchProjects(),
           fetchClients(),
@@ -106,8 +108,9 @@ const App: React.FC = () => {
         setClients(Array.isArray(cData) ? cData : []);
         setDevelopers(Array.isArray(dData) ? dData : []);
         setNotifications(Array.isArray(nData) ? nData : []);
-      } catch (err) {
+      } catch (err: any) {
         console.error("Failed to load initial data", err);
+        setApiError(err.message || "Failed to load data");
         // Set empty arrays on error to prevent crashes
         setProjects([]);
         setClients([]);
@@ -119,13 +122,40 @@ const App: React.FC = () => {
     };
 
     loadData();
+
+    // Set up periodic health check
+    const healthCheck = setInterval(async () => {
+      try {
+        await fetch('/api/health.php').then(r => {
+          if (!r.ok) throw new Error();
+          setApiError(null);
+        });
+      } catch (e) {
+        // Only set error if it persists
+        setApiError("Server Disconnected. Ensure npm run dev:api is running.");
+      }
+    }, 10000);
+
+    return () => clearInterval(healthCheck);
   }, [currentUser]);
 
   const refreshData = async () => {
-    const pData = await fetchProjects();
-    setProjects(pData);
-    const nData = await fetchNotifications();
-    setNotifications(nData);
+    try {
+      const [pData, cData, dData, nData] = await Promise.all([
+        fetchProjects(),
+        fetchClients(),
+        fetchDevelopers(),
+        fetchNotifications()
+      ]);
+      setProjects(Array.isArray(pData) ? pData : []);
+      setClients(Array.isArray(cData) ? cData : []);
+      setDevelopers(Array.isArray(dData) ? dData : []);
+      setNotifications(Array.isArray(nData) ? nData : []);
+      setApiError(null);
+    } catch (e: any) {
+      console.error(e);
+      setApiError(e.message);
+    }
   };
 
   const [settingsUsersLoading, setSettingsUsersLoading] = useState(false);
@@ -330,6 +360,7 @@ const App: React.FC = () => {
           notificationCount={notifications.filter((n: any) => !n.is_read).length}
           pendingCount={pendingCount}
           currentUser={currentUser}
+          apiError={apiError}
         >
           {activeTab === 'dashboard' && (
             <Dashboard
@@ -426,8 +457,7 @@ const App: React.FC = () => {
                   const res = await fetch(`/api/projects.php?id=${selectedProjectForDetail.id}`);
                   const detail = await res.json();
                   setSelectedProjectForDetail(detail);
-                  const freshData = await fetchProjects();
-                  setProjects(freshData);
+                  await refreshData();
                 }
               }}
             />

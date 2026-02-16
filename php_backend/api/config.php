@@ -20,6 +20,23 @@ header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-W
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Content-Type: application/json; charset=UTF-8");
 
+// Global Error Handler to ensure JSON response
+set_exception_handler(function($e) {
+    if (ob_get_length()) ob_clean();
+    http_response_code(500);
+    echo json_encode([
+        "success" => false, 
+        "error" => $e->getMessage(),
+        "trace" => "Internal Server Error"
+    ]);
+    exit;
+});
+
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    if (!(error_reporting() & $errno)) return false;
+    throw new ErrorException($errstr, 0, $errno, $errfile, $errline);
+});
+
 
 if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     http_response_code(200);
@@ -45,6 +62,7 @@ if (file_exists($secretFile)) {
 }
 
 // 3. Database Connection - Make it optional for rescue login
+$pdo = null;
 $GLOBALS['db_connected'] = false;
 try {
     // First, try to connect WITHOUT a database to create it if needed
@@ -94,9 +112,17 @@ function autoCreateTables($pdo) {
         'developers' => "CREATE TABLE IF NOT EXISTS `developers` (
             `id` int(11) NOT NULL AUTO_INCREMENT,
             `name` varchar(255) NOT NULL,
+            `full_name` varchar(255) DEFAULT NULL,
             `role` varchar(100) DEFAULT 'Developer',
             `status` varchar(50) DEFAULT 'Active',
             `email` varchar(255) DEFAULT NULL,
+            `personal_email` varchar(255) DEFAULT NULL,
+            `company_email` varchar(255) DEFAULT NULL,
+            `id_card_number` varchar(100) DEFAULT NULL,
+            `address` text DEFAULT NULL,
+            `slack` varchar(100) DEFAULT NULL,
+            `skills` text DEFAULT NULL,
+            `comments` text DEFAULT NULL,
             `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (`id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
@@ -104,6 +130,8 @@ function autoCreateTables($pdo) {
             `id` int(11) NOT NULL AUTO_INCREMENT,
             `name` varchar(255) NOT NULL,
             `client_id` int(11) NOT NULL,
+            `start_date` date DEFAULT NULL,
+            `end_date` date DEFAULT NULL,
             `status` varchar(50) DEFAULT 'Pending',
             `total_revenue` decimal(15,2) DEFAULT '0.00',
             `total_profit` decimal(15,2) DEFAULT '0.00',
@@ -131,6 +159,14 @@ function autoCreateTables($pdo) {
             `status` varchar(50) DEFAULT 'Unpaid',
             PRIMARY KEY (`id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
+        'additional_costs' => "CREATE TABLE IF NOT EXISTS `additional_costs` (
+            `id` int(11) NOT NULL AUTO_INCREMENT,
+            `project_id` int(11) NOT NULL,
+            `cost_type` varchar(255) DEFAULT 'Third Party Cost',
+            `description` text,
+            `amount` decimal(15,2) DEFAULT '0.00',
+            PRIMARY KEY (`id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
         'notifications' => "CREATE TABLE IF NOT EXISTS `notifications` (
             `id` int(11) NOT NULL AUTO_INCREMENT,
             `message` text NOT NULL,
@@ -144,6 +180,62 @@ function autoCreateTables($pdo) {
         $pdo->exec($sql);
     }
     
+    // ENSURE COLUMNS EXIST (Migration for existing tables)
+    // Cache migrations to avoid repeated slow DESCRIBE calls
+    $pCols = $pdo->query("DESCRIBE projects")->fetchAll();
+    $statusCol = null;
+    foreach($pCols as $c) if($c['Field'] === 'status') $statusCol = $c;
+    
+    if ($statusCol && strpos($statusCol['Type'], 'enum') !== false) {
+        $pdo->exec("ALTER TABLE projects MODIFY COLUMN status VARCHAR(50) DEFAULT 'Pending'");
+    }
+    
+    $pColNames = array_map(function($c) { return $c['Field']; }, $pCols);
+    if (!in_array('start_date', $pColNames)) $pdo->exec("ALTER TABLE projects ADD COLUMN start_date DATE DEFAULT NULL AFTER client_id");
+    if (!in_array('end_date', $pColNames)) $pdo->exec("ALTER TABLE projects ADD COLUMN end_date DATE DEFAULT NULL AFTER start_date");
+    
+    // Developers table
+    $dCols = $pdo->query("DESCRIBE developers")->fetchAll(PDO::FETCH_COLUMN);
+    $devFields = [
+        'full_name' => "VARCHAR(255) DEFAULT NULL",
+        'personal_email' => "VARCHAR(255) DEFAULT NULL",
+        'company_email' => "VARCHAR(255) DEFAULT NULL",
+        'id_card_number' => "VARCHAR(100) DEFAULT NULL",
+        'address' => "TEXT DEFAULT NULL",
+        'slack' => "VARCHAR(100) DEFAULT NULL",
+        'skills' => "TEXT DEFAULT NULL",
+        'comments' => "TEXT DEFAULT NULL"
+    ];
+    foreach ($devFields as $field => $def) {
+        if (!in_array($field, $dCols)) {
+            $pdo->exec("ALTER TABLE developers ADD COLUMN $field $def");
+        }
+    }
+    
+    // Clients table
+    $cCols = $pdo->query("DESCRIBE clients")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('company_name', $cCols)) $pdo->exec("ALTER TABLE clients ADD COLUMN company_name VARCHAR(255) DEFAULT NULL AFTER name");
+    if (!in_array('phone', $cCols)) $pdo->exec("ALTER TABLE clients ADD COLUMN phone VARCHAR(100) DEFAULT NULL AFTER email");
+    if (!in_array('address', $cCols)) $pdo->exec("ALTER TABLE clients ADD COLUMN address TEXT DEFAULT NULL");
+    
+    // Ensure project_developers has payment flags
+    $pdCols = $pdo->query("DESCRIBE project_developers")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('is_advance_paid', $pdCols)) $pdo->exec("ALTER TABLE project_developers ADD COLUMN is_advance_paid TINYINT(1) DEFAULT 0");
+    if (!in_array('is_final_paid', $pdCols)) $pdo->exec("ALTER TABLE project_developers ADD COLUMN is_final_paid TINYINT(1) DEFAULT 0");
+    if (!in_array('cost', $pdCols)) $pdo->exec("ALTER TABLE project_developers ADD COLUMN cost DECIMAL(15,2) DEFAULT 0.00");
+    
+    // Settings table (Ensure it exists for dashboard)
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `settings` (
+        `id` int(11) NOT NULL AUTO_INCREMENT,
+        `setting_key` varchar(100) NOT NULL UNIQUE,
+        `setting_value` text,
+        `updated_at` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+    
+    // Ensure default settings exist
+    $pdo->exec("INSERT IGNORE INTO settings (setting_key, setting_value) VALUES ('currency', 'USD')");
+    
     // Ensure default users exist
     $usersToEnsure = [
         ['username' => 'thilan', 'name' => 'Thilan', 'email' => 'thilan@novalink.com', 'pass' => 'Thilan12321', 'role' => 'Superadmin'],
@@ -153,14 +245,11 @@ function autoCreateTables($pdo) {
     foreach ($usersToEnsure as $u) {
         $check = $pdo->prepare("SELECT id FROM users WHERE LOWER(username) = LOWER(?)");
         $check->execute([$u['username']]);
-        $hashed = password_hash($u['pass'], PASSWORD_DEFAULT);
         
         if ($check->rowCount() == 0) {
+            $hashed = password_hash($u['pass'], PASSWORD_DEFAULT);
             $pdo->prepare("INSERT INTO users (username, name, email, password, role) VALUES (?, ?, ?, ?, ?)")
                 ->execute([$u['username'], $u['name'], $u['email'], $hashed, $u['role']]);
-        } else {
-            $pdo->prepare("UPDATE users SET password = ?, role = ? WHERE LOWER(username) = LOWER(?)")
-                ->execute([$hashed, $u['role'], $u['username']]);
         }
     }
 }

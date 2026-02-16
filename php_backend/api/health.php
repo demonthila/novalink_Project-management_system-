@@ -36,5 +36,3 @@ try {
 }
 
 echo json_encode(['ok' => $ok, 'details' => $messages]);
-
-?>
