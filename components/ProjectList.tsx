@@ -237,9 +237,9 @@ const ProjectList: React.FC<ProjectListProps> = ({
                               }
                             }} className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-slate-50 rounded-full transition-all active:scale-90" title="View Details"><ICONS.Check /></button>
                           )}
-                          {(userRole === 'Admin' || userRole === 'Superadmin') && p.status !== 'Finished' && (
+                          {(userRole === 'Admin' || userRole === 'Superadmin') && (
                             <>
-                              {title !== "On Hold Projects" && (
+                              {p.status !== 'Finished' && title !== "On Hold Projects" && (
                                 <button onClick={async () => {
                                   try {
                                     const detail = await fetchProject(Number(p.id));
@@ -266,10 +266,11 @@ const ProjectList: React.FC<ProjectListProps> = ({
       {/* Quick View Modal */}
       {selectedQuickView && (
         <ProjectQuickViewModal
-          project={selectedQuickView}
+          project={detailsMap[selectedQuickView.id] || selectedQuickView}
           clients={clients}
           onClose={() => setSelectedQuickView(null)}
           onEdit={onEdit}
+          isLoading={loadingMap[selectedQuickView.id]}
         />
       )}
     </div>

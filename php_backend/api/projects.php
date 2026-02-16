@@ -288,7 +288,24 @@ elseif ($method === 'PUT') {
 
 elseif ($method === 'DELETE') {
     if (!$id) exit(json_encode(["error" => "ID required"]));
-    $stmt = $pdo->prepare("DELETE FROM projects WHERE id = ?");
-    $stmt->execute([$id]);
-    echo json_encode(["success" => true, "message" => "Project deleted"]);
+    
+    try {
+        $pdo->beginTransaction();
+        
+        // Delete related data first
+        $pdo->prepare("DELETE FROM payments WHERE project_id = ?")->execute([$id]);
+        $pdo->prepare("DELETE FROM project_developers WHERE project_id = ?")->execute([$id]);
+        $pdo->prepare("DELETE FROM additional_costs WHERE project_id = ?")->execute([$id]);
+        
+        // Finally delete project
+        $stmt = $pdo->prepare("DELETE FROM projects WHERE id = ?");
+        $stmt->execute([$id]);
+        
+        $pdo->commit();
+        echo json_encode(["success" => true, "message" => "Project and all related data deleted"]);
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        http_response_code(500);
+        echo json_encode(["success" => false, "message" => "Failed to delete project: " . $e->getMessage()]);
+    }
 }

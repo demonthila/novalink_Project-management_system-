@@ -8,13 +8,15 @@ interface ProjectQuickViewModalProps {
     clients: Client[];
     onClose: () => void;
     onEdit?: (project: Project) => void;
+    isLoading?: boolean;
 }
 
 const ProjectQuickViewModal: React.FC<ProjectQuickViewModalProps> = ({
     project,
     clients,
     onClose,
-    onEdit
+    onEdit,
+    isLoading = false
 }) => {
     const client = clients.find(c => c.id === project.client_id);
 
@@ -83,9 +85,13 @@ const ProjectQuickViewModal: React.FC<ProjectQuickViewModalProps> = ({
                                 </div>
                                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
                                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Projected Profit</p>
-                                    <p className={`text-sm font-bold ${currentProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                        {formatCurrency(currentProfit, project.currency)} ({profitPercentage.toFixed(1)}%)
-                                    </p>
+                                    {isLoading ? (
+                                        <p className="text-sm font-bold text-blue-500 animate-pulse">Calculating...</p>
+                                    ) : (
+                                        <p className={`text-sm font-bold ${currentProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                            {formatCurrency(currentProfit, project.currency)} ({profitPercentage.toFixed(1)}%)
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -116,7 +122,9 @@ const ProjectQuickViewModal: React.FC<ProjectQuickViewModalProps> = ({
                         <div className="space-y-4">
                             <SectionHeader label="Developer Assignment" icon={<ICONS.Teams />} />
                             <div className="flex flex-wrap gap-2">
-                                {(project.developers || []).length > 0 ? (
+                                {isLoading ? (
+                                    <p className="text-[11px] text-blue-500 animate-pulse font-medium">Synchronizing developer data...</p>
+                                ) : (project.developers || []).length > 0 ? (
                                     (project.developers || []).map((d: any, idx) => (
                                         <div key={idx} className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-[11px] font-medium text-slate-700 shadow-sm">
                                             {d.name}
@@ -130,7 +138,9 @@ const ProjectQuickViewModal: React.FC<ProjectQuickViewModalProps> = ({
                         <div className="space-y-4">
                             <SectionHeader label="Additional Costs" icon={<ICONS.Finances />} />
                             <div className="space-y-2">
-                                {(project.additional_costs || []).length > 0 ? (
+                                {isLoading ? (
+                                    <p className="text-[11px] text-blue-500 animate-pulse font-medium">Fetching cost ledgers...</p>
+                                ) : (project.additional_costs || []).length > 0 ? (
                                     (project.additional_costs || []).map((c: any, idx) => (
                                         <div key={idx} className="flex justify-between items-center text-xs p-2.5 bg-white border border-slate-200 rounded-lg shadow-sm">
                                             <span className="text-slate-600">{c.description || c.cost_type}</span>

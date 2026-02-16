@@ -83,9 +83,36 @@ try {
         }
         if (!$id) throw new Exception("ID required for delete");
 
-        $stmt = $pdo->prepare("DELETE FROM clients WHERE id = ?");
-        $stmt->execute([$id]);
-        echo json_encode(["success" => true]);
+        try {
+            $pdo->beginTransaction();
+            
+            // 1. Get all project IDs for this client
+            $pStmt = $pdo->prepare("SELECT id FROM projects WHERE client_id = ?");
+            $pStmt->execute([$id]);
+            $projectIds = $pStmt->fetchAll(PDO::FETCH_COLUMN);
+            
+            if (!empty($projectIds)) {
+                $placeholders = implode(',', array_fill(0, count($projectIds), '?'));
+                
+                // 2. Delete all related data for these projects
+                $pdo->prepare("DELETE FROM payments WHERE project_id IN ($placeholders)")->execute($projectIds);
+                $pdo->prepare("DELETE FROM project_developers WHERE project_id IN ($placeholders)")->execute($projectIds);
+                $pdo->prepare("DELETE FROM additional_costs WHERE project_id IN ($placeholders)")->execute($projectIds);
+                
+                // 3. Delete projects
+                $pdo->prepare("DELETE FROM projects WHERE client_id = ?")->execute([$id]);
+            }
+            
+            // 4. Finally delete client
+            $stmt = $pdo->prepare("DELETE FROM clients WHERE id = ?");
+            $stmt->execute([$id]);
+            
+            $pdo->commit();
+            echo json_encode(["success" => true, "message" => "Client and all associated projects deleted"]);
+        } catch (Exception $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $e;
+        }
     }
 
 } catch (Throwable $e) {
