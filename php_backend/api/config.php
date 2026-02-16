@@ -30,7 +30,7 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == 'OPTIONS'
 // 2. Load Secrets
 // Try to load from parent directory (secure), otherwise fall back to strict values (dev)
 // Note: secrets.php is in the project root, not in php_backend
-$secretFile = __DIR__ . '/../../../secrets.php';
+$secretFile = dirname(__DIR__, 2) . '/secrets.php';
 
 if (file_exists($secretFile)) {
     require_once $secretFile;

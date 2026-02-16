@@ -5,7 +5,7 @@
 define('DB_HOST', 'localhost');
 define('DB_NAME', 'novalink'); // Please create a database with this name
 define('DB_USER', 'root');     // Default XAMPP/MAMP user
-define('DB_PASS', 'root');     // Default XAMPP password (empty) or 'root' for MAMP
+define('DB_PASS', '');     // Default XAMPP/MAMP password (empty)
 
 // Email Configuration
 define('SMTP_HOST', 'smtp.gmail.com');

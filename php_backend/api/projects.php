@@ -3,6 +3,13 @@
 session_start();
 require_once 'config.php';
 
+// Authentication disabled for testing - frontend auto-login bypasses session
+// if (!isset($_SESSION['user_id'])) {
+//     http_response_code(403);
+//     echo json_encode(["success" => false, "message" => "Authentication required"]);
+//     exit;
+// }
+
 // Ensure project_developers has payment flag columns (idempotent)
 try {
     $colStmt = $pdo->prepare("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = :db AND TABLE_NAME = 'project_developers' AND COLUMN_NAME = :col");
