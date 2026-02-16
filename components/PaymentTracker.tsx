@@ -3,6 +3,7 @@ import { formatCurrency } from '../utils';
 import { ICONS } from '../constants';
 import { Payment } from '../types';
 import { updatePayment } from '../services/api';
+import { toast } from 'react-hot-toast';
 
 interface PaymentTrackerProps {
     projectId: number;
@@ -10,6 +11,7 @@ interface PaymentTrackerProps {
     milestones: Payment[]; // Renamed internally to match prop usage context, but Type is Payment
     currency: string;
     onPaymentUpdate: () => void;
+    projectStatus?: string;
 }
 
 const PaymentTracker: React.FC<PaymentTrackerProps> = ({
@@ -17,7 +19,8 @@ const PaymentTracker: React.FC<PaymentTrackerProps> = ({
     projectName,
     milestones,
     currency,
-    onPaymentUpdate
+    onPaymentUpdate,
+    projectStatus
 }) => {
     const [updatingId, setUpdatingId] = useState<number | null>(null);
     const [editingDueDateId, setEditingDueDateId] = useState<number | null>(null);
@@ -36,9 +39,17 @@ const PaymentTracker: React.FC<PaymentTrackerProps> = ({
             const data = await updatePayment(paymentId, { status: newStatus, paid_date: paidDate });
 
             if (data.success) {
+                if (data.status_changed === 'Finished') {
+                    toast.success('Project successfully completed and archived.', {
+                        duration: 5000,
+                        icon: '🎊'
+                    });
+                } else {
+                    toast.success('Payment status updated');
+                }
                 onPaymentUpdate();
             } else {
-                setError('Failed to update payment status');
+                setError(data.error || 'Failed to update payment status');
             }
         } catch (error) {
             console.error('Payment update error:', error);
@@ -150,7 +161,7 @@ const PaymentTracker: React.FC<PaymentTrackerProps> = ({
                                             type="checkbox"
                                             checked={isPaid}
                                             onChange={() => handleCheckboxChange(payment.id, payment.status)}
-                                            disabled={isUpdating}
+                                            disabled={isUpdating || projectStatus === 'Finished'}
                                             className="sr-only peer"
                                         />
                                         <div className={`
@@ -159,7 +170,7 @@ const PaymentTracker: React.FC<PaymentTrackerProps> = ({
                                                 ? 'bg-emerald-600 border-emerald-600 shadow-lg shadow-emerald-500/20'
                                                 : 'bg-white border-slate-200'
                                             }
-                                            ${isUpdating ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-emerald-400'}
+                                            ${(isUpdating || projectStatus === 'Finished') ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-emerald-400'}
                                         `}>
                                             {isPaid ? (
                                                 <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -205,7 +216,7 @@ const PaymentTracker: React.FC<PaymentTrackerProps> = ({
                                                 </p>
                                             )}
                                         </div>
-                                        {!isEditingDueDate && !isPaid && (
+                                        {!isEditingDueDate && !isPaid && projectStatus !== 'Finished' && (
                                             <button
                                                 onClick={() => { setEditingDueDateId(payment.id); setTempDueDate(payment.due_date); }}
                                                 className="text-[9px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-700 transition-colors"

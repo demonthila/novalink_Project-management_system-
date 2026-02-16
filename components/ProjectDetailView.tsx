@@ -51,7 +51,7 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
                 invoiceNumber: `INV-${project.id}-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}`,
                 dueDate: project.end_date || new Date().toISOString().split('T')[0],
                 billedBy: {
-                    name: "Novalink Innovations",
+                    name: "Novalink Innovations (Pvt) Ltd",
                     address: "Colombo, Western Province, Sri Lanka",
                     email: "info@novalinkinnovations.com",
                     phone: "+94 76 006 8914"
@@ -393,6 +393,7 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
                                         milestones={project.payments}
                                         currency={project.currency}
                                         onPaymentUpdate={onRefresh}
+                                        projectStatus={project.status}
                                     />
                                 </div>
                             ) : (

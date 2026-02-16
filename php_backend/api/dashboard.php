@@ -15,12 +15,12 @@ try {
     // Provide both payments-based revenue (actual received) and project-recorded revenue for clarity.
     $sql = "SELECT
         (SELECT IFNULL(SUM(amount),0) FROM payments WHERE status = 'Paid') AS total_revenue_payments,
-        (SELECT IFNULL(SUM(total_revenue),0) FROM projects WHERE status IN ('Active','Completed')) AS total_revenue_projects,
-        (SELECT IFNULL(SUM(pd.cost),0) FROM project_developers pd JOIN projects p ON p.id = pd.project_id WHERE p.status IN ('Active','Completed')) AS total_dev_cost,
-        (SELECT IFNULL(SUM(ac.amount),0) FROM additional_costs ac JOIN projects p2 ON p2.id = ac.project_id WHERE p2.status IN ('Active','Completed')) AS total_add_cost,
+        (SELECT IFNULL(SUM(total_revenue),0) FROM projects WHERE status IN ('Active','Completed','Finished')) AS total_revenue_projects,
+        (SELECT IFNULL(SUM(pd.cost),0) FROM project_developers pd JOIN projects p ON p.id = pd.project_id WHERE p.status IN ('Active','Completed','Finished')) AS total_dev_cost,
+        (SELECT IFNULL(SUM(ac.amount),0) FROM additional_costs ac JOIN projects p2 ON p2.id = ac.project_id WHERE p2.status IN ('Active','Completed','Finished')) AS total_add_cost,
         (SELECT COUNT(*) FROM projects) AS total_projects,
         (SELECT SUM(CASE WHEN status = 'Active' THEN 1 ELSE 0 END) FROM projects) AS active_projects,
-        (SELECT SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) FROM projects) AS completed_projects,
+        (SELECT SUM(CASE WHEN status IN ('Completed','Finished') THEN 1 ELSE 0 END) FROM projects) AS completed_projects,
         (SELECT SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) FROM projects) AS pending_projects,
         (SELECT COUNT(*) FROM clients) AS total_clients
     ";
@@ -55,7 +55,7 @@ try {
     }
 
     // Get overdue projects count
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM projects WHERE end_date IS NOT NULL AND end_date < CURRENT_DATE AND status != 'Completed'");
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM projects WHERE end_date IS NOT NULL AND end_date < CURRENT_DATE AND status NOT IN ('Completed', 'Finished')");
     $stmt->execute();
     $overdueProjects = (int)$stmt->fetchColumn();
 

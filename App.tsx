@@ -382,6 +382,7 @@ const App: React.FC = () => {
               onView={(p) => setSelectedProjectForDetail(p)}
               onDelete={handleDeleteProject}
               onUpdate={(p) => handleSaveProject(p)}
+              userRole={currentUser?.role}
             />
           )}
 
@@ -397,20 +398,37 @@ const App: React.FC = () => {
               onView={(p) => setSelectedProjectForDetail(p)}
               onDelete={handleDeleteProject}
               onUpdate={(p) => handleSaveProject(p)}
+              userRole={currentUser?.role}
             />
           )}
 
-          {activeTab === 'archived' && (
+          {activeTab === 'onhold' && (
             <ProjectList
-              title="Historical Project Archive"
-              description="View completed or cancelled projects."
-              projects={projects.filter(p => ['Completed', 'Cancelled'].includes(p.status))}
+              title="On Hold Projects"
+              description="Review and resume paused project workflows."
+              projects={projects.filter(p => p.status === 'On Hold')}
               clients={clients} developers={developers}
               onAdd={() => { setEditingProject(null); setShowProjectModal(true); }}
               onEdit={(p) => { setEditingProject(p); setShowProjectModal(true); }}
               onView={(p) => setSelectedProjectForDetail(p)}
               onDelete={handleDeleteProject}
               onUpdate={(p) => handleSaveProject(p)}
+              userRole={currentUser?.role}
+            />
+          )}
+
+          {activeTab === 'finished' && (
+            <ProjectList
+              title="Finished Projects"
+              description="Review successfully completed project workflows."
+              projects={projects.filter(p => p.status === 'Finished')}
+              clients={clients} developers={developers}
+              onAdd={() => { setEditingProject(null); setShowProjectModal(true); }}
+              onEdit={(p) => { setEditingProject(p); setShowProjectModal(true); }}
+              onView={(p) => setSelectedProjectForDetail(p)}
+              onDelete={handleDeleteProject}
+              onUpdate={(p) => handleSaveProject(p)}
+              userRole={currentUser?.role}
             />
           )}
 

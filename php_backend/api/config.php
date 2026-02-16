@@ -20,6 +20,16 @@ header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-W
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Content-Type: application/json; charset=UTF-8");
 
+function getJsonInput() {
+    $input = file_get_contents('php://input');
+    if (!$input) return [];
+    $data = json_decode($input, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        return [];
+    }
+    return $data;
+}
+
 // Global Error Handler to ensure JSON response
 set_exception_handler(function($e) {
     if (ob_get_length()) ob_clean();
@@ -198,6 +208,7 @@ function autoCreateTables($pdo) {
     $dCols = $pdo->query("DESCRIBE developers")->fetchAll(PDO::FETCH_COLUMN);
     $devFields = [
         'full_name' => "VARCHAR(255) DEFAULT NULL",
+        'email' => "VARCHAR(255) DEFAULT NULL",
         'personal_email' => "VARCHAR(255) DEFAULT NULL",
         'company_email' => "VARCHAR(255) DEFAULT NULL",
         'id_card_number' => "VARCHAR(100) DEFAULT NULL",
@@ -252,18 +263,6 @@ function autoCreateTables($pdo) {
                 ->execute([$u['username'], $u['name'], $u['email'], $hashed, $u['role']]);
         }
     }
-}
-
-// 4. Helper Function: Get JSON Input
-function getJsonInput() {
-    $rawInput = file_get_contents("php://input");
-    $input = json_decode($rawInput, true);
-    
-    if (empty($input) && !empty($_POST)) {
-        $input = $_POST;
-    }
-    
-    return $input ?? [];
 }
 
 // Helper to check if database is connected

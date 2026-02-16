@@ -26,7 +26,8 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, onLo
       subItems: [
         { id: 'projects', name: 'Active Projects' },
         { id: 'pending', name: 'Pending Approval', badge: pendingCount },
-        { id: 'archived', name: 'Archived' },
+        { id: 'onhold', name: 'On Hold' },
+        { id: 'finished', name: 'Finished Projects' },
       ]
     },
     // Mission Control (task board) removed

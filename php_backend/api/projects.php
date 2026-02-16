@@ -185,17 +185,26 @@ elseif ($method === 'PUT') {
     try {
         $pdo->beginTransaction();
 
-        // If request attempts to mark project as Completed, validate all payments are received
-        if (isset($data['status']) && $data['status'] === 'Completed') {
+        // If request attempts to mark project as Finished/Completed, validate all payments are received
+        if (isset($data['status']) && ($data['status'] === 'Finished' || $data['status'] === 'Completed')) {
             $payCheck = $pdo->prepare("SELECT COUNT(*) as total, SUM(CASE WHEN LOWER(status)='paid' THEN 1 ELSE 0 END) as paid FROM payments WHERE project_id = ?");
             $payCheck->execute([$id]);
             $row = $payCheck->fetch();
             $totalPayments = isset($row['total']) ? intval($row['total']) : 0;
             $paidCount = isset($row['paid']) ? intval($row['paid']) : 0;
+            
+            // Re-fetch project to check revenue vs paid amount
+            $revStmt = $pdo->prepare("SELECT total_revenue FROM projects WHERE id = ?");
+            $revStmt->execute([$id]);
+            $totalRevenue = $revStmt->fetchColumn();
+            
+            $paidAmtStmt = $pdo->prepare("SELECT SUM(amount) FROM payments WHERE project_id = ? AND status = 'Paid'");
+            $paidAmtStmt->execute([$id]);
+            $paidAmt = $paidAmtStmt->fetchColumn() ?: 0;
 
-            if ($totalPayments < 3 || $paidCount < $totalPayments || $paidCount < 3) {
+            if ($totalPayments < 3 || $paidCount < $totalPayments || $paidAmt < $totalRevenue) {
                 $pdo->rollBack();
-                echo json_encode(["success" => false, "message" => "Please collect all remaining payments before completing this project."]);
+                echo json_encode(["success" => false, "message" => "Please collect all remaining payments (minimum 3 milestones and full contractual value) before completing this project."]);
                 exit;
             }
         }

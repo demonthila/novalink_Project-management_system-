@@ -4,6 +4,7 @@ import { Project, Client, Developer } from '../types';
 import { fetchProject } from '../services/api';
 import { ICONS } from '../constants';
 import { formatCurrency, calculateGrandTotal } from '../utils';
+import ProjectQuickViewModal from './ProjectQuickViewModal';
 
 interface ProjectListProps {
   projects: Project[];
@@ -16,6 +17,7 @@ interface ProjectListProps {
   onView: (project: Project) => void;
   title?: string;
   description?: string;
+  userRole?: string;
 }
 
 const ProjectList: React.FC<ProjectListProps> = ({
@@ -28,9 +30,11 @@ const ProjectList: React.FC<ProjectListProps> = ({
   onDelete,
   onView,
   title = "Active Projects Queue",
-  description = "Review and manage live project workflows."
+  description = "Review and manage live project workflows.",
+  userRole = 'User'
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedQuickView, setSelectedQuickView] = useState<Project | null>(null);
 
   const filtered = projects.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -135,6 +139,7 @@ const ProjectList: React.FC<ProjectListProps> = ({
                   const assignedDevs = (p.developers || []).map(pd => pd.name); // Using embedded names or join with developers list?
                   // p.developers comes from API with names fully populated in my projects.php query
 
+                  const canRestore = ['Completed', 'Cancelled', 'On Hold'].includes(p.status);
                   const isArchived = ['Completed', 'Cancelled'].includes(p.status);
 
                   return (
@@ -196,7 +201,7 @@ const ProjectList: React.FC<ProjectListProps> = ({
                         {formatCurrency(calculateGrandTotal(p), p.currency)}
                       </td>
                       <td className="px-6 sm:px-8 py-5">
-                        <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black tracking-widest uppercase ${p.status === 'Completed' ? 'bg-slate-100 text-slate-500' :
+                        <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black tracking-widest uppercase ${p.status === 'Completed' || p.status === 'Finished' ? 'bg-slate-100 text-slate-500' :
                           p.status === 'Active' ? 'bg-blue-50 text-blue-600' :
                             'bg-emerald-50 text-emerald-600'
                           }`}>
@@ -205,34 +210,49 @@ const ProjectList: React.FC<ProjectListProps> = ({
                       </td>
                       <td className="px-6 sm:px-8 py-5 text-right">
                         <div className="flex items-center justify-end gap-1 sm:opacity-0 group-hover:opacity-100 transition-all">
-                          {isArchived && (
+                          <button
+                            onClick={() => setSelectedQuickView(p)}
+                            className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-slate-50 rounded-full transition-all active:scale-90"
+                            title="Quick View Project Details"
+                          >
+                            <ICONS.Eye />
+                          </button>
+                          {canRestore && p.status !== 'Finished' && (userRole === 'Admin' || userRole === 'Superadmin') && (
                             <button
                               onClick={() => handleRestore(p)}
-                              className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors"
-                              title="Restore to Active"
+                              className="w-10 h-10 flex items-center justify-center text-emerald-500 hover:bg-emerald-50 rounded-full transition-all active:scale-90"
+                              title="Resume Project"
                             >
                               <ICONS.Restore />
                             </button>
                           )}
-                          <button onClick={async () => {
-                            try {
-                              const detail = await fetchProject(Number(p.id));
-                              onView(detail);
-                            } catch (err) {
-                              console.error('Failed to fetch project detail', err);
-                              onView(p); // fallback to list item
-                            }
-                          }} className="p-2 text-slate-400 hover:text-blue-600 transition-colors" title="View Details"><ICONS.Check /></button>
-                          <button onClick={async () => {
-                            try {
-                              const detail = await fetchProject(Number(p.id));
-                              onEdit(detail);
-                            } catch (err) {
-                              console.error('Failed to fetch project detail for edit', err);
-                              onEdit(p);
-                            }
-                          }} className="p-2 text-slate-400 hover:text-amber-600 transition-colors" title="Edit Deployment"><ICONS.Edit /></button>
-                          <button onClick={() => onDelete(p.id)} className="p-2 text-slate-400 hover:text-rose-600 transition-colors" title="Delete Permanent"><ICONS.Delete /></button>
+                          {title !== "On Hold Projects" && (
+                            <button onClick={async () => {
+                              try {
+                                const detail = await fetchProject(Number(p.id));
+                                onView(detail);
+                              } catch (err) {
+                                console.error('Failed to fetch project detail', err);
+                                onView(p); // fallback to list item
+                              }
+                            }} className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-slate-50 rounded-full transition-all active:scale-90" title="View Details"><ICONS.Check /></button>
+                          )}
+                          {(userRole === 'Admin' || userRole === 'Superadmin') && p.status !== 'Finished' && (
+                            <>
+                              {title !== "On Hold Projects" && (
+                                <button onClick={async () => {
+                                  try {
+                                    const detail = await fetchProject(Number(p.id));
+                                    onEdit(detail);
+                                  } catch (err) {
+                                    console.error('Failed to fetch project detail for edit', err);
+                                    onEdit(p);
+                                  }
+                                }} className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-amber-600 hover:bg-slate-50 rounded-full transition-all active:scale-90" title="Edit Deployment"><ICONS.Edit /></button>
+                              )}
+                              <button onClick={() => onDelete(p.id)} className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-full transition-all active:scale-90" title="Delete Permanent"><ICONS.Delete /></button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -243,6 +263,15 @@ const ProjectList: React.FC<ProjectListProps> = ({
           </table>
         </div>
       </div>
+      {/* Quick View Modal */}
+      {selectedQuickView && (
+        <ProjectQuickViewModal
+          project={selectedQuickView}
+          clients={clients}
+          onClose={() => setSelectedQuickView(null)}
+          onEdit={onEdit}
+        />
+      )}
     </div>
   );
 };

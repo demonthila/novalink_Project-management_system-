@@ -185,7 +185,7 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
                   <select className={INPUT_CLASSES} value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })}>
                     <option value="Pending">Pending</option>
                     <option value="Active">Active</option>
-                    <option value="Completed">Completed</option>
+                    <option value="Finished">Finished</option>
                     <option value="On Hold">On Hold</option>
                   </select>
                 </div>
@@ -212,17 +212,17 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
                 <div className="space-y-1.5">
                   <label className={LABEL_CLASSES}>Contractual Value</label>
                   <div className="relative">
-                    <input type="number" className={INPUT_CLASSES} placeholder="0.00" value={formData.total_revenue || ''} onChange={e => setFormData({ ...formData, total_revenue: parseFloat(e.target.value) || 0 })} />
+                    <input required type="number" step="0.01" min="0" className={INPUT_CLASSES} placeholder="0.00" value={formData.total_revenue || ''} onChange={e => setFormData({ ...formData, total_revenue: parseFloat(e.target.value) || 0 })} />
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-1 rounded">CURRENCY: {formData.currency}</div>
                   </div>
                 </div>
                 <div className="space-y-1.5">
                   <label className={LABEL_CLASSES}>Commencement Date</label>
-                  <input type="date" className={INPUT_CLASSES} value={formData.start_date} onChange={e => setFormData({ ...formData, start_date: e.target.value })} />
+                  <input required type="date" className={INPUT_CLASSES} value={formData.start_date || ''} onChange={e => setFormData({ ...formData, start_date: e.target.value })} />
                 </div>
                 <div className="space-y-1.5">
                   <label className={LABEL_CLASSES}>Target Milestone (Deadline)</label>
-                  <input type="date" className={INPUT_CLASSES} value={formData.end_date} onChange={e => setFormData({ ...formData, end_date: e.target.value })} />
+                  <input required type="date" className={INPUT_CLASSES} value={formData.end_date || ''} onChange={e => setFormData({ ...formData, end_date: e.target.value })} />
                 </div>
               </div>
             </div>
