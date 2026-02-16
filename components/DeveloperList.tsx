@@ -145,8 +145,8 @@ const DeveloperList: React.FC<DeveloperListProps> = ({ developers, onAdd, onUpda
                 {/* Hourly rate removed */}
                 <td className="px-8 py-6 text-right">
                   <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => handleOpenEdit(d)} className="p-2 text-slate-400 hover:text-[#0A69E1] hover:bg-blue-50 rounded-lg transition-colors"><ICONS.Edit /></button>
-                    <button onClick={() => handleDelete(d.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"><ICONS.Delete /></button>
+                    <button onClick={(e) => { e.stopPropagation(); handleOpenEdit(d); }} className="p-2 text-slate-400 hover:text-[#0A69E1] hover:bg-blue-50 rounded-lg transition-colors"><ICONS.Edit /></button>
+                    <button onClick={(e) => { e.stopPropagation(); handleDelete(d.id); }} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"><ICONS.Delete /></button>
                   </div>
                 </td>
               </tr>
@@ -233,7 +233,7 @@ const DeveloperModal = ({ isOpen, onClose, onSubmit, initialData }: any) => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Slack/Communication Handle</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">role</label>
                 <input placeholder="Ex: @harrison_dev" className={MODAL_INPUT} name="slack" value={formData.slack} onChange={e => setFormData({ ...formData, slack: e.target.value })} />
               </div>
               <div className="space-y-1.5">

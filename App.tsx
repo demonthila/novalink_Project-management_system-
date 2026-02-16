@@ -286,11 +286,21 @@ const App: React.FC = () => {
   };
 
   const handleDeleteProject = async (id: number) => {
+    console.log('handleDeleteProject called for ID:', id);
     if (confirm("Are you sure you want to delete this project?")) {
-      await deleteProject(id);
-      await refreshData();
-      if (selectedProjectForDetail?.id === id) setSelectedProjectForDetail(null);
-      toast.success('Project deleted successfully');
+      try {
+        console.log('Confirmed deletion of ID:', id);
+        const result = await deleteProject(id);
+        console.log('Delete result:', result);
+        await refreshData();
+        if (selectedProjectForDetail?.id === id) setSelectedProjectForDetail(null);
+        toast.success('Project deleted successfully');
+      } catch (err: any) {
+        console.error('Deletion failed', err);
+        toast.error(err.message || 'Failed to delete project. Check server logs.');
+      }
+    } else {
+      console.log('Deletion cancelled by user for ID:', id);
     }
   };
 

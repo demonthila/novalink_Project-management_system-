@@ -296,6 +296,7 @@ elseif ($method === 'DELETE') {
         $pdo->prepare("DELETE FROM payments WHERE project_id = ?")->execute([$id]);
         $pdo->prepare("DELETE FROM project_developers WHERE project_id = ?")->execute([$id]);
         $pdo->prepare("DELETE FROM additional_costs WHERE project_id = ?")->execute([$id]);
+        $pdo->prepare("DELETE FROM notifications WHERE project_id = ?")->execute([$id]);
         
         // Finally delete project
         $stmt = $pdo->prepare("DELETE FROM projects WHERE id = ?");
@@ -303,7 +304,7 @@ elseif ($method === 'DELETE') {
         
         $pdo->commit();
         echo json_encode(["success" => true, "message" => "Project and all related data deleted"]);
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
         http_response_code(500);
         echo json_encode(["success" => false, "message" => "Failed to delete project: " . $e->getMessage()]);

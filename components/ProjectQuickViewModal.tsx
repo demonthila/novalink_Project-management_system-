@@ -29,7 +29,8 @@ const ProjectQuickViewModal: React.FC<ProjectQuickViewModalProps> = ({
     const profitPercentage = totalRevenue > 0 ? (currentProfit / totalRevenue) * 100 : 0;
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300" onClick={onClose}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300"
+            onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
             <div
                 className="bg-white rounded-[24px] w-full max-w-2xl overflow-hidden shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-200 transition-all flex flex-col max-h-[90vh]"
                 onClick={e => e.stopPropagation()}

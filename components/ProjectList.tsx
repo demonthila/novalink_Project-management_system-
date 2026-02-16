@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Project, Client, Developer } from '../types';
 import { fetchProject } from '../services/api';
 import { ICONS } from '../constants';
@@ -36,17 +36,23 @@ const ProjectList: React.FC<ProjectListProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedQuickView, setSelectedQuickView] = useState<Project | null>(null);
 
-  const filtered = projects.filter(p =>
+  const filtered = useMemo(() => projects.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     clients.find(c => c.id === p.client_id)?.company_name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  ), [projects, searchTerm, clients]);
 
   // Local cache for fetched project details (payments, developers)
   const [detailsMap, setDetailsMap] = useState<Record<number, any>>({});
   const [loadingMap, setLoadingMap] = useState<Record<number, boolean>>({});
 
-  const loadDetails = async (projectId: number) => {
-    if (detailsMap[projectId] || loadingMap[projectId]) return;
+  // Track loading status in a ref to decouple state updates from re-renders in the effect
+  const loadingRefs = useRef<Record<number, boolean>>({});
+
+  const fetchDetail = useCallback(async (projectId: number) => {
+    // If already loaded or currently loading, skip
+    if (detailsMap[projectId] || loadingRefs.current[projectId]) return;
+
+    loadingRefs.current[projectId] = true;
     setLoadingMap(prev => ({ ...prev, [projectId]: true }));
     try {
       const detail = await fetchProject(projectId);
@@ -54,17 +60,20 @@ const ProjectList: React.FC<ProjectListProps> = ({
     } catch (err) {
       console.error('Failed to load project detail', err);
     } finally {
+      loadingRefs.current[projectId] = false;
       setLoadingMap(prev => ({ ...prev, [projectId]: false }));
     }
-  };
+  }, [detailsMap]); // loadingMap removed from dependencies
 
-  // Auto-load details for visible/filtered projects to avoid manual Load button
+  // Auto-load details for visible/filtered projects
   useEffect(() => {
     filtered.forEach(p => {
-      if (p && p.id) loadDetails(p.id);
+      // Direct ref check is safe here
+      if (p && p.id && !detailsMap[p.id] && !loadingRefs.current[p.id]) {
+        fetchDetail(p.id);
+      }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtered]);
+  }, [filtered, detailsMap, fetchDetail]);
 
   const handleRestore = (project: Project) => {
     onUpdate({ ...project, status: 'Active' });
@@ -211,7 +220,7 @@ const ProjectList: React.FC<ProjectListProps> = ({
                       <td className="px-6 sm:px-8 py-5 text-right">
                         <div className="flex items-center justify-end gap-1 sm:opacity-0 group-hover:opacity-100 transition-all">
                           <button
-                            onClick={() => setSelectedQuickView(p)}
+                            onClick={(e) => { e.stopPropagation(); setSelectedQuickView(p); }}
                             className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-slate-50 rounded-full transition-all active:scale-90"
                             title="Quick View Project Details"
                           >
@@ -219,7 +228,7 @@ const ProjectList: React.FC<ProjectListProps> = ({
                           </button>
                           {canRestore && p.status !== 'Finished' && (userRole === 'Admin' || userRole === 'Superadmin') && (
                             <button
-                              onClick={() => handleRestore(p)}
+                              onClick={(e) => { e.stopPropagation(); handleRestore(p); }}
                               className="w-10 h-10 flex items-center justify-center text-emerald-500 hover:bg-emerald-50 rounded-full transition-all active:scale-90"
                               title="Resume Project"
                             >
@@ -227,7 +236,8 @@ const ProjectList: React.FC<ProjectListProps> = ({
                             </button>
                           )}
                           {title !== "On Hold Projects" && (
-                            <button onClick={async () => {
+                            <button onClick={async (e) => {
+                              e.stopPropagation();
                               try {
                                 const detail = await fetchProject(Number(p.id));
                                 onView(detail);
@@ -250,7 +260,7 @@ const ProjectList: React.FC<ProjectListProps> = ({
                                   }
                                 }} className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-amber-600 hover:bg-slate-50 rounded-full transition-all active:scale-90" title="Edit Deployment"><ICONS.Edit /></button>
                               )}
-                              <button onClick={() => onDelete(p.id)} className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-full transition-all active:scale-90" title="Delete Permanent"><ICONS.Delete /></button>
+                              <button onClick={(e) => { e.stopPropagation(); onDelete(p.id); }} className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-full transition-all active:scale-90" title="Delete Permanent"><ICONS.Delete /></button>
                             </>
                           )}
                         </div>

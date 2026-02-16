@@ -98,6 +98,7 @@ try {
                 $pdo->prepare("DELETE FROM payments WHERE project_id IN ($placeholders)")->execute($projectIds);
                 $pdo->prepare("DELETE FROM project_developers WHERE project_id IN ($placeholders)")->execute($projectIds);
                 $pdo->prepare("DELETE FROM additional_costs WHERE project_id IN ($placeholders)")->execute($projectIds);
+                $pdo->prepare("DELETE FROM notifications WHERE project_id IN ($placeholders)")->execute($projectIds);
                 
                 // 3. Delete projects
                 $pdo->prepare("DELETE FROM projects WHERE client_id = ?")->execute([$id]);
@@ -109,7 +110,7 @@ try {
             
             $pdo->commit();
             echo json_encode(["success" => true, "message" => "Client and all associated projects deleted"]);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             if ($pdo->inTransaction()) $pdo->rollBack();
             throw $e;
         }

@@ -6,9 +6,10 @@ async function handleResponse(res: Response) {
             // Try to parse JSON error from specialized config.php handler
             try {
                 const errJson = await res.json();
-                throw new Error(errJson.error || 'Internal Server Error');
-            } catch (e) {
-                // If not JSON, it might be the proxy failing to reach PHP
+                throw new Error(errJson.error || errJson.message || 'Internal Server Error');
+            } catch (e: any) {
+                if (e.message && e.message !== 'Internal Server Error') throw e;
+                // If not JSON or generic, it might be the proxy failing to reach PHP
                 throw new Error('Cannot reach API. Ensure npm run dev:api is running in a separate terminal.');
             }
         }
