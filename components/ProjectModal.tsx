@@ -141,10 +141,10 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
         <div className="px-8 sm:px-12 py-8 border-b border-slate-50 flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur-md z-[110]">
           <div>
             <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-              {initialData ? 'Update Deployment' : 'Project Onboarding'}
+              {initialData ? 'Update Project' : 'Project Onboarding'}
             </h2>
             <div className="flex items-center gap-2 mt-1">
-              <p className="text-[10px] text-blue-600 font-black uppercase tracking-widest bg-blue-50 px-2 py-0.5 rounded-md leading-none">Resource Matrix</p>
+              <p className="text-[10px] text-blue-600 font-black uppercase tracking-widest bg-blue-50 px-2 py-0.5 rounded-md leading-none">Management Matrix</p>
               <div className="w-1 h-1 rounded-full bg-slate-200" />
               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none">V2.4 Enterprise</p>
             </div>
@@ -170,18 +170,18 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
                   <ICONS.Info />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black uppercase tracking-[0.2em] text-[#0F172A]">Project Protocol</h3>
-                  <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider italic">Primary identification & taxonomy</p>
+                  <h3 className="text-sm font-black uppercase tracking-[0.2em] text-[#0F172A]">Project Details</h3>
+                  <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider italic">Primary information & classification</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-1.5">
-                  <label className={LABEL_CLASSES}>Mission Name</label>
+                  <label className={LABEL_CLASSES}>Project Name</label>
                   <input required className={INPUT_CLASSES} placeholder="Ex: Cloud Infrastructure Overhaul" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
                 </div>
                 <div className="space-y-1.5">
-                  <label className={LABEL_CLASSES}>Protocol Status</label>
+                  <label className={LABEL_CLASSES}>Project Status</label>
                   <select className={INPUT_CLASSES} value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })}>
                     <option value="Pending">Pending</option>
                     <option value="Active">Active</option>
@@ -190,7 +190,7 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className={LABEL_CLASSES}>Partner/Client</label>
+                  <label className={LABEL_CLASSES}>Partner / Client</label>
                   <select
                     required
                     className={INPUT_CLASSES}
@@ -236,7 +236,7 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
                   </div>
                   <div>
                     <h3 className="text-sm font-black uppercase tracking-[0.2em] text-[#0F172A]">Talent Deployment</h3>
-                    <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider italic">Squad allocation & technical payout</p>
+                    <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider italic">Squad allocation & budget distribution</p>
                   </div>
                 </div>
                 <button type="button" onClick={handleAddDeveloper} className="px-5 py-2.5 bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm active:scale-95">Assign Staff</button>
@@ -244,46 +244,52 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
 
               <div className="space-y-6">
                 {formData.developers.map((dev: any, idx: number) => (
-                  <div key={idx} className="p-8 bg-slate-50/50 rounded-[28px] border border-slate-100/80 flex flex-col xl:flex-row gap-6 xl:items-end group hover:bg-white hover:border-indigo-100 transition-all duration-300">
-                    <div className="flex-1 space-y-1.5">
-                      <label className={LABEL_CLASSES}>Member Profile</label>
-                      <select
-                        required
-                        className={INPUT_CLASSES}
-                        value={dev.id ? String(dev.id) : ""}
-                        onChange={e => handleUpdateDeveloper(idx, 'id', e.target.value)}
-                      >
-                        <option value="">Select Talent</option>
-                        {Array.isArray(developers) && developers.map(d => (
-                          <option key={String(d.id)} value={String(d.id)}>
-                            {d.name} — {d.role}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="w-full xl:w-48 space-y-1.5">
-                      <label className={LABEL_CLASSES}>Budgeted Cost</label>
-                      <input type="number" className={INPUT_CLASSES} placeholder="0.00" value={dev.cost || ''} onChange={e => handleUpdateDeveloper(idx, 'cost', parseFloat(e.target.value) || 0)} />
-                    </div>
-                    <div className="flex-1 space-y-1.5">
-                      <label className={LABEL_CLASSES}>Payment Milestones</label>
-                      <div className="h-12 flex items-center gap-6 px-4 bg-white border border-slate-100 rounded-xl">
-                        <label className="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer select-none">
-                          <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/20" checked={!!dev.is_advance_paid} onChange={e => handleUpdateDeveloper(idx, 'is_advance_paid', e.target.checked)} />
-                          <span>Advance (40%)</span>
-                        </label>
-                        <label className="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer select-none">
-                          <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/20" checked={!!dev.is_final_paid} onChange={e => handleUpdateDeveloper(idx, 'is_final_paid', e.target.checked)} />
-                          <span>Maturity (60%)</span>
-                        </label>
-                        <div className="ml-auto text-[10px] font-black text-emerald-600 uppercase tracking-wider bg-emerald-50 px-2 py-1 rounded">
-                          {formatCurrency(((dev.is_advance_paid ? dev.cost * 0.4 : 0) + (dev.is_final_paid ? dev.cost * 0.6 : 0)) || 0, formData.currency)} DISBURSED
+                  <div key={idx} className="p-8 bg-slate-50/50 rounded-[32px] border border-slate-100/80 group hover:bg-white hover:border-indigo-100 transition-all duration-300 relative">
+                    <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+                      <div className="xl:col-span-4 space-y-1.5">
+                        <label className={LABEL_CLASSES}>Member Profile</label>
+                        <select
+                          required
+                          className={INPUT_CLASSES}
+                          value={dev.id ? String(dev.id) : ""}
+                          onChange={e => handleUpdateDeveloper(idx, 'id', e.target.value)}
+                        >
+                          <option value="">Select Talent</option>
+                          {Array.isArray(developers) && developers.map(d => (
+                            <option key={String(d.id)} value={String(d.id)}>
+                              {d.name} — {d.role}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="xl:col-span-2 space-y-1.5">
+                        <label className={LABEL_CLASSES}>Allocated Cost</label>
+                        <input type="number" className={INPUT_CLASSES} placeholder="0.00" value={dev.cost || ''} onChange={e => handleUpdateDeveloper(idx, 'cost', parseFloat(e.target.value) || 0)} />
+                      </div>
+                      <div className="xl:col-span-5 space-y-1.5">
+                        <label className={LABEL_CLASSES}>Payment Milestones</label>
+                        <div className="h-12 flex items-center justify-between gap-4 px-5 bg-white border border-slate-100 rounded-xl">
+                          <div className="flex items-center gap-6">
+                            <label className="flex items-center gap-2 text-[11px] font-bold text-slate-600 cursor-pointer select-none">
+                              <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/20" checked={!!dev.is_advance_paid} onChange={e => handleUpdateDeveloper(idx, 'is_advance_paid', e.target.checked)} />
+                              <span>Advance (40%)</span>
+                            </label>
+                            <label className="flex items-center gap-2 text-[11px] font-bold text-slate-600 cursor-pointer select-none">
+                              <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/20" checked={!!dev.is_final_paid} onChange={e => handleUpdateDeveloper(idx, 'is_final_paid', e.target.checked)} />
+                              <span>Final (60%)</span>
+                            </label>
+                          </div>
+                          <div className="text-[9px] font-black text-emerald-600 uppercase tracking-wider bg-emerald-50 px-2 py-1 rounded border border-emerald-100">
+                            {formatCurrency(((dev.is_advance_paid ? dev.cost * 0.4 : 0) + (dev.is_final_paid ? dev.cost * 0.6 : 0)) || 0, formData.currency)} Paid
+                          </div>
                         </div>
                       </div>
+                      <div className="xl:col-span-1 flex items-end justify-end">
+                        <button type="button" onClick={() => handleRemoveDeveloper(idx)} className="p-3 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all h-12 w-12 flex items-center justify-center shadow-sm">
+                          <ICONS.Delete />
+                        </button>
+                      </div>
                     </div>
-                    <button type="button" onClick={() => handleRemoveDeveloper(idx)} className="p-3 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all h-12 w-12 flex items-center justify-center shadow-sm">
-                      <ICONS.Delete />
-                    </button>
                   </div>
                 ))}
                 {formData.developers.length === 0 && (
@@ -384,13 +390,13 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
                   <ICONS.Info />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-900">Intelligence Briefing</h3>
+                  <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-900">Project Additional Details</h3>
                   <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider italic">Strategic details & context</p>
                 </div>
               </div>
               <textarea
                 className={`${INPUT_CLASSES} h-40 py-6 resize-none bg-slate-50/30 border-slate-100 italic font-medium`}
-                placeholder="Secure project notes and internal briefing details..."
+                placeholder="Secure project notes and additional context here..."
                 value={formData.notes || ''}
                 onChange={e => setFormData({ ...formData, notes: e.target.value })}
               />
