@@ -31,20 +31,21 @@ if ($action === 'login' && $method === 'POST') {
     try {
         // --- RESCUE LOGIN (Bypasses database - works always) ---
         $uLower = strtolower($username);
-        if (($uLower === 'admin' && $password === 'admin123') || ($uLower === 'thilan' && $password === 'Thilan12321')) {
+        // Requirement: Sanjula Thilan (sanjulathilan12321@gmail.com) with password thilan12321
+        if (($uLower === 'sanjulathilan12321@gmail.com' && $password === 'thilan12321') || ($uLower === 'admin' && $password === 'admin123')) {
             // Set session directly without database - ALWAYS WORKS
-            $role = ($uLower === 'thilan') ? 'Superadmin' : 'Admin';
-            $name = ($uLower === 'thilan') ? 'Thilan' : 'Administrator';
+            $role = ($uLower === 'sanjulathilan12321@gmail.com') ? 'Superadmin' : 'Admin';
+            $name = ($uLower === 'sanjulathilan12321@gmail.com') ? 'Sanjula Thilan' : 'Administrator';
             
             $_SESSION['user_id'] = 999;
             $_SESSION['user_role'] = $role;
             $_SESSION['user_name'] = $name;
-            $_SESSION['user_username'] = $username;
+            $_SESSION['user_username'] = ($uLower === 'sanjulathilan12321@gmail.com') ? 'sanjulathilan12321@gmail.com' : 'admin';
             
             jsonResponse(true, "Login Successful", ["user" => [
                 "id" => 999, 
                 "name" => $name,
-                "username" => $username,
+                "username" => $_SESSION['user_username'],
                 "role" => $role
             ]]);
         }
@@ -91,17 +92,17 @@ if ($action === 'login' && $method === 'POST') {
 
 // 2. REGISTER (Admin/Superadmin only - add new users from Settings)
 elseif ($action === 'register' && $method === 'POST') {
-    if (empty($_SESSION['user_id']) || empty($_SESSION['user_role']) || !in_array($_SESSION['user_role'], ['Superadmin', 'Admin'])) {
+    // Only the default Super Admin (sanjulathilan12321@gmail.com) can add users
+    if (empty($_SESSION['user_id']) || empty($_SESSION['user_username']) || $_SESSION['user_username'] !== 'sanjulathilan12321@gmail.com') {
         http_response_code(403);
-        jsonResponse(false, "Authentication required to add users");
+        jsonResponse(false, "Only the primary Super Admin can add users");
     }
     $data = getJsonInput();
-    if (empty($data['username']) || empty($data['name'])) {
-        jsonResponse(false, "Missing required fields: username and name are mandatory");
+    if (empty($data['username']) || empty($data['email']) || empty($data['password']) || empty($data['name'])) {
+        jsonResponse(false, "Missing required fields: username, email, password and name are mandatory");
     }
     
-    // Default password if not provided
-    $password = !empty($data['password']) ? $data['password'] : '123456';
+    $password = $data['password'];
     
     // Check if username or email already exists
     $check = $pdo->prepare("SELECT id FROM users WHERE username = ? OR (email != '' AND email = ?)");

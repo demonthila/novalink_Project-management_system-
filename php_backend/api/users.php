@@ -41,27 +41,25 @@ if ($method === 'GET') {
     exit;
 }
 
-// POST = create new user (Admin/Superadmin only)
-// Authentication temporarily disabled
-/*
+// POST = create new user (Primary Superadmin only)
 if ($method === 'POST') {
-    if (empty($_SESSION['user_role']) || !in_array($_SESSION['user_role'], ['Superadmin', 'Admin'])) {
+    if (empty($_SESSION['user_username']) || $_SESSION['user_username'] !== 'sanjulathilan12321@gmail.com') {
         http_response_code(403);
-        echo json_encode(["success" => false, "message" => "Admin access required"]);
+        echo json_encode(["success" => false, "message" => "Only the primary Super Admin can create users"]);
         exit;
     }
-*/
-if ($method === 'POST') {
+
     
     $data = json_decode(file_get_contents('php://input'), true) ?? [];
     
+    $username = trim($data['username'] ?? '');
     $email = trim($data['email'] ?? '');
     $password = $data['password'] ?? '';
     $name = trim($data['name'] ?? '');
     $role = $data['role'] ?? 'User';
     
-    if (empty($email) || empty($password) || empty($name)) {
-        echo json_encode(["success" => false, "message" => "Email, password and name are required"]);
+    if (empty($username) || empty($email) || empty($password) || empty($name)) {
+        echo json_encode(["success" => false, "message" => "Username, Email, password and name are required"]);
         exit;
     }
     
@@ -69,24 +67,18 @@ if ($method === 'POST') {
         $role = 'User';
     }
     
-    // Only Superadmin can create Superadmin - temporarily disabled for testing
-    // if ($role === 'Superadmin' && $_SESSION['user_role'] !== 'Superadmin') {
-    //     echo json_encode(["success" => false, "message" => "Only Superadmins can create Superadmin users"]);
-    //     exit;
-    // }
-    
     try {
-        // Check if email already exists
-        $check = $pdo->prepare("SELECT id FROM users WHERE email = ?");
-        $check->execute([$email]);
+        // Check if username or email already exists
+        $check = $pdo->prepare("SELECT id FROM users WHERE LOWER(username) = LOWER(?) OR (email != '' AND LOWER(email) = LOWER(?))");
+        $check->execute([$username, $email]);
         if ($check->rowCount() > 0) {
-            echo json_encode(["success" => false, "message" => "Email already exists"]);
+            echo json_encode(["success" => false, "message" => "Username or Email already exists"]);
             exit;
         }
         
         $hash = password_hash($password, PASSWORD_DEFAULT);
-        $stmt = $pdo->prepare("INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$name, $email, $hash, $role]);
+        $stmt = $pdo->prepare("INSERT INTO users (name, username, email, password, role) VALUES (?, ?, ?, ?, ?)");
+        $stmt->execute([$name, $username, $email, $hash, $role]);
         
         echo json_encode(["success" => true, "message" => "User created successfully", "id" => $pdo->lastInsertId()]);
     } catch (PDOException $e) {
@@ -96,38 +88,36 @@ if ($method === 'POST') {
     exit;
 }
 
-// DELETE = remove user by id (Admin/Superadmin only; cannot delete self)
-// Authentication temporarily disabled
-/*
+// DELETE = remove user by id (Primary Superadmin only; cannot delete self or primary admin)
 if ($method === 'DELETE') {
-    if (empty($_SESSION['user_role']) || !in_array($_SESSION['user_role'], ['Superadmin', 'Admin'])) {
+    if (empty($_SESSION['user_username']) || $_SESSION['user_username'] !== 'sanjulathilan12321@gmail.com') {
         http_response_code(403);
-        echo json_encode(["success" => false, "message" => "Admin access required"]);
+        echo json_encode(["success" => false, "message" => "Only the primary Super Admin can remove users"]);
         exit;
     }
-*/
-if ($method === 'DELETE') {
+
     $input = json_decode(file_get_contents('php://input'), true) ?? [];
     $id = isset($input['id']) ? (int) $input['id'] : 0;
     if ($id <= 0) {
         echo json_encode(["success" => false, "message" => "Invalid user id"]);
         exit;
     }
-    // Self-delete check temporarily disabled for testing
-    // if ((int) $_SESSION['user_id'] === $id) {
-    //     echo json_encode(["success" => false, "message" => "Cannot delete your own account"]);
-    //     exit;
-    // }
 
     try {
-        // Check if target user is superadmin - temporarily disabled for testing
-        $check = $pdo->prepare("SELECT role FROM users WHERE id = ?");
-        $check->execute([$id]);
-        $target = $check->fetch();
-        // if ($target && $target['role'] === 'Superadmin' && $_SESSION['user_role'] !== 'Superadmin') {
-        //     echo json_encode(["success" => false, "message" => "Only Superadmins can delete other Superadmins"]);
-        //     exit;
-        // }
+        // Protect the primary superadmin account from deletion
+        $checkPrimary = $pdo->prepare("SELECT username FROM users WHERE id = ?");
+        $checkPrimary->execute([$id]);
+        $targetUser = $checkPrimary->fetch();
+        
+        if ($targetUser && $targetUser['username'] === 'sanjulathilan12321@gmail.com') {
+            echo json_encode(["success" => false, "message" => "The primary Super Admin account cannot be deleted"]);
+            exit;
+        }
+
+        if (isset($_SESSION['user_id']) && (int) $_SESSION['user_id'] === $id) {
+            echo json_encode(["success" => false, "message" => "You cannot delete your own account while logged in"]);
+            exit;
+        }
 
         $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
         $stmt->execute([$id]);

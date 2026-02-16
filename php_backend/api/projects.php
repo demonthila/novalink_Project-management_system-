@@ -217,17 +217,30 @@ elseif ($method === 'PUT') {
         
         // Update Project Table
         if (isset($data['name'])) {
+            $name = trim($data['name']);
+            $clientId = intval($data['client_id'] ?? 0);
+            $startDate = !empty($data['start_date']) ? $data['start_date'] : null;
+            $endDate = !empty($data['end_date']) ? $data['end_date'] : null;
+            $status = $data['status'] ?? 'Pending';
+            $revenue = floatval($data['total_revenue'] ?? 0);
+            $currency = $data['currency'] ?? 'USD';
+            $notes = $data['notes'] ?? '';
+
+            if (empty($name) || $clientId <= 0) {
+                throw new Exception("Project name and valid client are required.");
+            }
+
             $sql = "UPDATE projects SET name=?, client_id=?, start_date=?, end_date=?, status=?, total_revenue=?, currency=?, notes=? WHERE id=?";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([
-                $data['name'],
-                $data['client_id'],
-                $data['start_date'],
-                $data['end_date'],
-                $data['status'],
-                $data['total_revenue'],
-                $data['currency'],
-                $data['notes'],
+                $name,
+                $clientId,
+                $startDate,
+                $endDate,
+                $status,
+                $revenue,
+                $currency,
+                $notes,
                 $id
             ]);
         }

@@ -249,7 +249,7 @@ function autoCreateTables($pdo) {
     
     // Ensure default users exist
     $usersToEnsure = [
-        ['username' => 'thilan', 'name' => 'Thilan', 'email' => 'thilan@novalink.com', 'pass' => 'Thilan12321', 'role' => 'Superadmin'],
+        ['username' => 'sanjulathilan12321@gmail.com', 'name' => 'Sanjula Thilan', 'email' => 'sanjulathilan12321@gmail.com', 'pass' => 'thilan12321', 'role' => 'Superadmin'],
         ['username' => 'admin', 'name' => 'Administrator', 'email' => 'admin@novalink.com', 'pass' => 'admin123', 'role' => 'Admin']
     ];
 

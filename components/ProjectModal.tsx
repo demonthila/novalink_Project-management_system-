@@ -38,6 +38,8 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
     notes: ''
   });
 
+  const [isSaving, setIsSaving] = useState(false);
+
   useEffect(() => {
     if (initialData) {
       // Map initial data to form.
@@ -118,20 +120,33 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
     setFormData({ ...formData, developers: newDevs });
   };
 
-  const handleSubmit = () => {
+  const isValid = !!(formData.name && formData.client_id && formData.end_date);
+
+  const handleSubmit = async () => {
     // If user attempts to mark Completed, verify payments first
-    if (String(formData.status) === 'Completed') {
+    if (String(formData.status) === 'Completed' || String(formData.status) === 'Finished') {
       const payments = formData.payments || [];
       const allPaid = payments.length >= 3 && payments.every((p: any) => String((p.status || '')).toLowerCase() === 'paid');
       if (!allPaid) {
-        alert('⚠ Please collect all remaining payments before completing this project.');
+        alert('⚠ Please collect all remaining payments (minimum 3 milestones and full contractual value) before completing this project.');
         return;
       }
 
       if (!confirm('Are you sure you want to mark this project as Completed?')) return;
     }
 
-    onSubmit(formData);
+    // Basic validation
+    if (!formData.name || !formData.client_id) {
+      alert("Please fill in all mandatory fields (Name and Partner).");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await onSubmit(formData);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -159,9 +174,9 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
 
             {/* Financial Summary */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-              <FinancialWidget label="Net Impact" value={formatCurrency(financialSummary.profit, formData.currency)} color="emerald" sub={`${financialSummary.profitMargin.toFixed(1)}% Yield`} />
-              <FinancialWidget label="Resource Burn" value={formatCurrency(financialSummary.devCosts, formData.currency)} color="blue" sub={`${formData.developers.length} Assigned`} />
-              <FinancialWidget label="Operational Cost" value={formatCurrency(financialSummary.additionalCosts, formData.currency)} color="amber" sub="External assets" />
+              <FinancialWidget label="Net Profit Yield" value={formatCurrency(financialSummary.profit, formData.currency)} color="emerald" sub={`${financialSummary.profitMargin.toFixed(1)}% Margin`} />
+              <FinancialWidget label="Resource Burn" value={formatCurrency(financialSummary.devCosts, formData.currency)} color="blue" sub={`${formData.developers.filter((d: any) => d.id).length} Assigned Members`} />
+              <FinancialWidget label="Operating Costs" value={formatCurrency(financialSummary.additionalCosts, formData.currency)} color="amber" sub="External assets & Fees" />
             </div>
 
             <div className={SECTION_CONTAINER}>
@@ -181,7 +196,7 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
                   <input required className={INPUT_CLASSES} placeholder="Ex: Cloud Infrastructure Overhaul" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
                 </div>
                 <div className="space-y-1.5">
-                  <label className={LABEL_CLASSES}>Project Status</label>
+                  <label className={LABEL_CLASSES}>Status Protocol</label>
                   <select className={INPUT_CLASSES} value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })}>
                     <option value="Pending">Pending</option>
                     <option value="Active">Active</option>
@@ -189,6 +204,30 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
                     <option value="On Hold">On Hold</option>
                   </select>
                 </div>
+                <div className="space-y-1.5">
+                  <label className={LABEL_CLASSES}>Commencement Date</label>
+                  <input required type="date" className={INPUT_CLASSES} value={formData.start_date || ''} onChange={e => setFormData({ ...formData, start_date: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className={LABEL_CLASSES}>Target Milestone (Deadline)</label>
+                  <input required type="date" className={INPUT_CLASSES} value={formData.end_date || ''} onChange={e => setFormData({ ...formData, end_date: e.target.value })} />
+                </div>
+              </div>
+            </div>
+
+            {/* Client Info Section */}
+            <div className={SECTION_CONTAINER}>
+              <div className={SECTION_HEADER}>
+                <div className="w-12 h-12 rounded-[14px] bg-emerald-600 flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
+                  <ICONS.Clients />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-[0.2em] text-[#0F172A]">Client Info</h3>
+                  <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider italic">Authorized partner details</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-1.5">
                   <label className={LABEL_CLASSES}>Partner / Client</label>
                   <select
@@ -212,17 +251,19 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
                 <div className="space-y-1.5">
                   <label className={LABEL_CLASSES}>Contractual Value</label>
                   <div className="relative">
-                    <input required type="number" step="0.01" min="0" className={INPUT_CLASSES} placeholder="0.00" value={formData.total_revenue || ''} onChange={e => setFormData({ ...formData, total_revenue: parseFloat(e.target.value) || 0 })} />
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-1 rounded">CURRENCY: {formData.currency}</div>
+                    <input
+                      required
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className={`${INPUT_CLASSES} text-right pr-32`}
+                      placeholder="0.00"
+                      value={formData.total_revenue || ''}
+                      onChange={e => setFormData({ ...formData, total_revenue: parseFloat(e.target.value) || 0 })}
+                      onWheel={(e) => (e.target as HTMLElement).blur()}
+                    />
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400 bg-slate-100 px-2.5 py-1.5 rounded-lg border border-slate-200">CURRENCY: {formData.currency}</div>
                   </div>
-                </div>
-                <div className="space-y-1.5">
-                  <label className={LABEL_CLASSES}>Commencement Date</label>
-                  <input required type="date" className={INPUT_CLASSES} value={formData.start_date || ''} onChange={e => setFormData({ ...formData, start_date: e.target.value })} />
-                </div>
-                <div className="space-y-1.5">
-                  <label className={LABEL_CLASSES}>Target Milestone (Deadline)</label>
-                  <input required type="date" className={INPUT_CLASSES} value={formData.end_date || ''} onChange={e => setFormData({ ...formData, end_date: e.target.value })} />
                 </div>
               </div>
             </div>
@@ -263,8 +304,15 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
                         </select>
                       </div>
                       <div className="xl:col-span-2 space-y-1.5">
-                        <label className={LABEL_CLASSES}>Allocated Cost</label>
-                        <input type="number" className={INPUT_CLASSES} placeholder="0.00" value={dev.cost || ''} onChange={e => handleUpdateDeveloper(idx, 'cost', parseFloat(e.target.value) || 0)} />
+                        <label className={LABEL_CLASSES}>Member Budget</label>
+                        <input
+                          type="number"
+                          className={`${INPUT_CLASSES} text-right`}
+                          placeholder="0.00"
+                          value={dev.cost || ''}
+                          onChange={e => handleUpdateDeveloper(idx, 'cost', parseFloat(e.target.value) || 0)}
+                          onWheel={(e) => (e.target as HTMLElement).blur()}
+                        />
                       </div>
                       <div className="xl:col-span-5 space-y-1.5">
                         <label className={LABEL_CLASSES}>Payment Milestones</label>
@@ -301,6 +349,34 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
                 )}
               </div>
             </div>
+
+            {/* Payment Milestones (ReadOnly in this modal) */}
+            {initialData && formData.payments && formData.payments.length > 0 && (
+              <div className={SECTION_CONTAINER}>
+                <div className={SECTION_HEADER}>
+                  <div className="w-12 h-12 rounded-[14px] bg-slate-200 flex items-center justify-center text-slate-600">
+                    <ICONS.Calendar />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black uppercase tracking-[0.2em] text-[#0F172A]">Payment Milestones</h3>
+                    <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider italic">Automated Fiscal Schedule</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {formData.payments.map((p: any, idx: number) => (
+                    <div key={idx} className="p-6 bg-slate-50/50 rounded-2xl border border-slate-100 flex flex-col gap-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Phase {p.payment_number}</span>
+                        <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${p.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                          {p.status}
+                        </span>
+                      </div>
+                      <p className="text-xl font-black text-slate-900">{formatCurrency(p.amount, formData.currency)}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Additional Costs */}
             <div className={SECTION_CONTAINER}>
@@ -356,13 +432,14 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
                       <input
                         type="number"
                         placeholder="0.00"
-                        className={INPUT_CLASSES}
+                        className={`${INPUT_CLASSES} text-right`}
                         value={cost.amount || ''}
                         onChange={e => {
                           const newCosts = [...formData.additional_costs];
                           newCosts[idx] = { ...newCosts[idx], amount: parseFloat(e.target.value) || 0 };
                           setFormData({ ...formData, additional_costs: newCosts });
                         }}
+                        onWheel={(e) => (e.target as HTMLElement).blur()}
                       />
                     </div>
                     <button type="button" onClick={() => {
@@ -402,9 +479,28 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, 
               />
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-end gap-6 pt-10 border-t border-slate-100">
-              <button type="button" onClick={onClose} className="w-full sm:w-auto px-10 py-3 text-[11px] font-black text-slate-400 uppercase tracking-widest hover:text-rose-600 transition-all">Cancel Onboarding</button>
-              <button type="submit" className={PRIMARY_BUTTON_CLASSES}>Commit Protocol</button>
+            <div className="flex flex-col sm:flex-row items-center justify-end gap-6 pt-10 border-t border-slate-100 bg-white sticky bottom-0 z-[110] pb-2 sm:pb-0 font-sans">
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full sm:w-auto px-10 py-4 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] hover:text-rose-600 transition-all"
+              >
+                Abort Changes
+              </button>
+              <button
+                type="submit"
+                disabled={isSaving || !isValid}
+                className={`${PRIMARY_BUTTON_CLASSES} min-w-[240px] ${isSaving || !isValid ? 'opacity-50 cursor-not-allowed shadow-none' : ''}`}
+              >
+                {isSaving ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    Encrypting Data...
+                  </>
+                ) : (
+                  initialData ? 'Update Matrix' : 'Initialize Project'
+                )}
+              </button>
             </div>
           </form>
         </div>
@@ -422,9 +518,11 @@ const FinancialWidget = ({ label, value, color, sub }: any) => {
   return (
     <div className={`p-8 rounded-[36px] border shadow-sm group relative overflow-hidden transition-all duration-500 hover:shadow-xl hover:-translate-y-1 ${colors[color]}`}>
       <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 blur-3xl -translate-x-4 -translate-y-12 group-hover:translate-x-4 transition-transform duration-1000" />
-      <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70 mb-2 leading-none">{label}</p>
-      <p className="text-3xl font-black tracking-tighter leading-none mb-3">{value}</p>
-      <div className="flex items-center gap-2">
+      <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-75 mb-3 leading-none">{label}</p>
+      <div className="flex items-baseline gap-1.5 flex-wrap">
+        <p className="text-2xl sm:text-3xl font-black tracking-tighter leading-tight break-all">{value}</p>
+      </div>
+      <div className="flex items-center gap-2 mt-4">
         <div className="w-1.5 h-1.5 rounded-full bg-current opacity-30 animate-pulse" />
         <p className="text-[11px] font-black opacity-60 uppercase tracking-widest">{sub}</p>
       </div>
