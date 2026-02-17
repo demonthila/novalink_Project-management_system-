@@ -29,7 +29,7 @@ const ProjectList: React.FC<ProjectListProps> = ({
   onEdit,
   onDelete,
   onView,
-  title = "Active Projects Queue",
+  title = "ongoing projects ",
   description = "Review and manage live project workflows.",
   userRole = 'User'
 }) => {
