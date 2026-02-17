@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Build outputs
+dist/
+hostinger_deploy/
+
+# Environment files
+.env
+.env.local
+secrets.php
+secrets.php.production
+
+# IDE
+.vscode/sftp.json
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Deployment scripts with credentials
+deploy.sh
+quick-deploy.sh
+
+# Temporary files
+*.tmp
+*.temp

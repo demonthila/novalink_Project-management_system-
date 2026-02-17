@@ -1,3 +1,36 @@
+# 📝 Copy This Code to Fix Hostinger
+
+## Step-by-Step Instructions
+
+### 1. Login to Hostinger
+Go to: **https://hpanel.hostinger.com**
+
+### 2. Navigate to File Manager
+1. Click on your hosting plan
+2. Go to **Files** → **File Manager**
+3. Navigate to: `public_html/api/`
+
+### 3. Edit projects.php
+1. Find the file: **projects.php**
+2. Right-click → **Edit** (or click Edit icon)
+3. **Select All** (Ctrl+A or Cmd+A)
+4. **Delete** all existing code
+5. **Copy** the code below and **Paste** it into the editor
+
+### 4. Save
+1. Click **Save** or **Save Changes**
+2. Close the editor
+
+### 5. Test
+1. Go to your website
+2. **Clear browser cache** (Ctrl+Shift+R or Cmd+Shift+R)
+3. Try creating a project
+
+---
+
+## 📋 COPY THIS ENTIRE CODE BLOCK
+
+```php
 <?php
 // api/projects.php
 session_start();
@@ -122,14 +155,13 @@ elseif ($method === 'POST') {
             $dStmt = $pdo->prepare("INSERT INTO project_developers (project_id, developer_id, cost, is_advance_paid, is_final_paid) VALUES (?, ?, ?, ?, ?)");
             foreach ($data['developers'] as $dev) {
                 $devId = isset($dev['id']) ? intval($dev['id']) : 0;
-                if ($devId <= 0) continue; // SKIP if no developer selected
+                if ($devId <= 0) continue; 
 
                 $cost = (float)($dev['cost'] ?? 0);
                 $isAdvance = !empty($dev['is_advance_paid']) ? 1 : 0;
                 $isFinal = !empty($dev['is_final_paid']) ? 1 : 0;
                 $dStmt->execute([$projectId, $devId, $cost, $isAdvance, $isFinal]);
                 $totalDevCost += $cost;
-                // paid amount for this developer (40% advance, 60% final)
                 $totalDevPaid += ($isAdvance ? $cost * 0.4 : 0) + ($isFinal ? $cost * 0.6 : 0);
             }
         }
@@ -139,7 +171,7 @@ elseif ($method === 'POST') {
         if (!empty($data['additional_costs']) && is_array($data['additional_costs'])) {
             $cStmt = $pdo->prepare("INSERT INTO additional_costs (project_id, cost_type, description, amount) VALUES (?, ?, ?, ?)");
             foreach ($data['additional_costs'] as $cost) {
-                if (empty($cost['description']) && empty($cost['amount'])) continue; // SKIP empty rows
+                if (empty($cost['description']) && empty($cost['amount'])) continue; 
                 $amount = (float)($cost['amount'] ?? 0);
                 $costType = $cost['cost_type'] ?? 'Third Party Cost';
                 $cStmt->execute([$projectId, $costType, $cost['description'] ?? '', $amount]);
@@ -147,7 +179,7 @@ elseif ($method === 'POST') {
             }
         }
 
-        // 4. Update Profit (based on payments made to developers)
+        // 4. Update Profit
         $profit = calculateProfit($revenue, $totalDevPaid, $totalAddCost);
         $pUpdate = $pdo->prepare("UPDATE projects SET total_profit = ? WHERE id = ?");
         $pUpdate->execute([$profit, $projectId]);
@@ -157,7 +189,6 @@ elseif ($method === 'POST') {
         $p2 = $revenue * 0.30;
         $p3 = $revenue * 0.40;
         
-        // Due dates logic
         $start = !empty($data['start_date']) ? new DateTime($data['start_date']) : new DateTime();
         $end = !empty($data['end_date']) ? new DateTime($data['end_date']) : (clone $start)->modify('+1 month');
         
@@ -210,7 +241,6 @@ elseif ($method === 'PUT') {
     try {
         $pdo->beginTransaction();
 
-        // If request attempts to mark project as Finished/Completed, validate all payments are received
         if (isset($data['status']) && ($data['status'] === 'Finished' || $data['status'] === 'Completed')) {
             $payCheck = $pdo->prepare("SELECT COUNT(*) as total, SUM(CASE WHEN LOWER(status)='paid' THEN 1 ELSE 0 END) as paid FROM payments WHERE project_id = ?");
             $payCheck->execute([$id]);
@@ -218,7 +248,6 @@ elseif ($method === 'PUT') {
             $totalPayments = isset($row['total']) ? intval($row['total']) : 0;
             $paidCount = isset($row['paid']) ? intval($row['paid']) : 0;
             
-            // Re-fetch project to check revenue vs paid amount
             $revStmt = $pdo->prepare("SELECT total_revenue FROM projects WHERE id = ?");
             $revStmt->execute([$id]);
             $totalRevenue = $revStmt->fetchColumn();
@@ -233,14 +262,7 @@ elseif ($method === 'PUT') {
                 exit;
             }
         }
-        // Update Project Basics
-        // For simplicity, we expect all fields or use COALESCE in SQL, but simpler to just update what's sent.
-        // However, calculating profit requires knowing all costs.
-        // Simplest strategy: Delete relations and re-insert (for developers/costs) OR update smartly.
-        // Given complexity, let's assume full update of relations is sent, or we fetch current first.
-        // Strategy: Update Project Fields -> Re-calc Profit.
         
-        // Update Project Table
         if (isset($data['name'])) {
             $name = trim($data['name']);
             $clientId = intval($data['client_id'] ?? 0);
@@ -258,19 +280,10 @@ elseif ($method === 'PUT') {
             $sql = "UPDATE projects SET name=?, client_id=?, start_date=?, end_date=?, status=?, total_revenue=?, currency=?, notes=? WHERE id=?";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([
-                $name,
-                $clientId,
-                $startDate,
-                $endDate,
-                $status,
-                $revenue,
-                $currency,
-                $notes,
-                $id
+                $name, $clientId, $startDate, $endDate, $status, $revenue, $currency, $notes, $id
             ]);
         }
 
-        // Update Developers (Delete all, re-insert) - classic simple approach
         if (isset($data['developers'])) {
             $pdo->prepare("DELETE FROM project_developers WHERE project_id=?")->execute([$id]);
             $dStmt = $pdo->prepare("INSERT INTO project_developers (project_id, developer_id, cost, is_advance_paid, is_final_paid) VALUES (?, ?, ?, ?, ?)");
@@ -283,7 +296,6 @@ elseif ($method === 'PUT') {
             }
         }
 
-        // Update Additional Costs
         if (isset($data['additional_costs'])) {
             $pdo->prepare("DELETE FROM additional_costs WHERE project_id=?")->execute([$id]);
             $cStmt = $pdo->prepare("INSERT INTO additional_costs (project_id, cost_type, description, amount) VALUES (?, ?, ?, ?)");
@@ -293,17 +305,11 @@ elseif ($method === 'PUT') {
             }
         }
         
-        // Recalculate Profit
-        // Fetch fresh totals
         $revStmt = $pdo->prepare("SELECT total_revenue FROM projects WHERE id=?");
         $revStmt->execute([$id]);
         $revenue = $revStmt->fetchColumn();
 
-        // Calculate developer PAID amounts (advance 40% and final 60%)
-        $devCostStmt = $pdo->prepare("SELECT IFNULL(SUM(
-            (CASE WHEN is_advance_paid=1 THEN cost*0.4 ELSE 0 END) +
-            (CASE WHEN is_final_paid=1 THEN cost*0.6 ELSE 0 END)
-        ),0) as paid_sum FROM project_developers WHERE project_id=?");
+        $devCostStmt = $pdo->prepare("SELECT IFNULL(SUM((CASE WHEN is_advance_paid=1 THEN cost*0.4 ELSE 0 END) + (CASE WHEN is_final_paid=1 THEN cost*0.6 ELSE 0 END)),0) as paid_sum FROM project_developers WHERE project_id=?");
         $devCostStmt->execute([$id]);
         $devCost = $devCostStmt->fetchColumn() ?: 0;
 
@@ -329,14 +335,11 @@ elseif ($method === 'DELETE') {
     
     try {
         $pdo->beginTransaction();
-        
-        // Delete related data first
         $pdo->prepare("DELETE FROM payments WHERE project_id = ?")->execute([$id]);
         $pdo->prepare("DELETE FROM project_developers WHERE project_id = ?")->execute([$id]);
         $pdo->prepare("DELETE FROM additional_costs WHERE project_id = ?")->execute([$id]);
         $pdo->prepare("DELETE FROM notifications WHERE project_id = ?")->execute([$id]);
         
-        // Finally delete project
         $stmt = $pdo->prepare("DELETE FROM projects WHERE id = ?");
         $stmt->execute([$id]);
         
@@ -348,3 +351,19 @@ elseif ($method === 'DELETE') {
         echo json_encode(["success" => false, "message" => "Failed to delete project: " . $e->getMessage()]);
     }
 }
+```
+
+---
+
+## ✅ After Saving
+
+1. **Close the editor**
+2. **Go to your website**: https://novaprojects.novalinkinnovations.com
+3. **Clear browser cache**: Press Ctrl+Shift+R (Windows) or Cmd+Shift+R (Mac)
+4. **Try creating a project**
+
+---
+
+## 🎉 Done!
+
+Project creation should now work properly with better error messages if anything goes wrong.

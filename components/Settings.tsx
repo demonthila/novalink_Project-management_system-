@@ -244,6 +244,7 @@ const Settings: React.FC<SettingsProps> = ({ users, currentUsername, currentUser
                                     <th className="px-5 py-3">Name</th>
                                     <th className="px-5 py-3">Email / Username</th>
                                     <th className="px-5 py-3">Role</th>
+                                    {isPrimarySuperadmin && <th className="px-5 py-3">Password Hash</th>}
                                     <th className="px-5 py-3">Joined</th>
                                     <th className="px-5 py-3 text-right w-24">Actions</th>
                                 </tr>
@@ -251,13 +252,13 @@ const Settings: React.FC<SettingsProps> = ({ users, currentUsername, currentUser
                             <tbody className="divide-y divide-slate-100">
                                 {usersLoading ? (
                                     <tr>
-                                        <td colSpan={5} className="px-5 py-8 text-center text-slate-400 text-sm">
+                                        <td colSpan={isPrimarySuperadmin ? 6 : 5} className="px-5 py-8 text-center text-slate-400 text-sm">
                                             Loading users…
                                         </td>
                                     </tr>
                                 ) : users.length === 0 ? (
                                     <tr>
-                                        <td colSpan={5} className="px-5 py-8 text-center text-slate-400 text-sm">
+                                        <td colSpan={isPrimarySuperadmin ? 6 : 5} className="px-5 py-8 text-center text-slate-400 text-sm">
                                             No users yet. Admins can click “Add user” to create access.
                                         </td>
                                     </tr>
@@ -281,6 +282,15 @@ const Settings: React.FC<SettingsProps> = ({ users, currentUsername, currentUser
                                                     {user.role}
                                                 </span>
                                             </td>
+                                            {isPrimarySuperadmin && (
+                                                <td className="px-5 py-3">
+                                                    <div className="max-w-xs overflow-hidden">
+                                                        <code className="text-[10px] text-slate-500 font-mono break-all">
+                                                            {(user as any).password || 'N/A'}
+                                                        </code>
+                                                    </div>
+                                                </td>
+                                            )}
                                             <td className="px-5 py-3 text-slate-500 text-sm">
                                                 {new Date(user.createdAt || 0).toLocaleDateString()}
                                             </td>

@@ -5,29 +5,31 @@ require_once 'config.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
-// Authentication temporarily disabled for testing
-/*
+// Authentication check - handled by config.php
 if (!isset($_SESSION['user_id'])) {
-    http_response_code(403);
+    http_response_code(401);
     echo json_encode(["success" => false, "message" => "Authentication required"]);
     exit;
 }
-*/
 
 $method = $_SERVER['REQUEST_METHOD'];
 
 // GET = list users (Admin/Superadmin only)
-/*
 if ($method === 'GET') {
     if (empty($_SESSION['user_role']) || !in_array($_SESSION['user_role'], ['Superadmin', 'Admin'])) {
         http_response_code(403);
         echo json_encode(["success" => false, "message" => "Admin access required"]);
         exit;
     }
-*/
-if ($method === 'GET') {
+    
     try {
-        $stmt = $pdo->query("SELECT id, username, name, email, role, created_at FROM users ORDER BY created_at DESC");
+        // Include password hash if the requester is Superadmin
+        $isSuper = ($_SESSION['user_role'] === 'Superadmin');
+        $query = $isSuper 
+            ? "SELECT id, username, name, email, password, role, created_at FROM users ORDER BY created_at DESC"
+            : "SELECT id, username, name, email, role, created_at FROM users ORDER BY created_at DESC";
+            
+        $stmt = $pdo->query($query);
         $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
         foreach ($users as &$u) {
             $u['createdAt'] = $u['created_at'];

@@ -63,10 +63,6 @@ const Login: React.FC<{ onLogin: (creds: { username: string; pass: string }) => 
         <div className="text-center pt-8 border-t border-slate-100">
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
             Security Notice: Admin Credentials Required.
-            <br />
-            <span className="text-[#0A69E1] mt-2 block opacity-60">
-              If you can't log in, try the <a href="/api/auth.php?action=login&rescue=true" className="underline font-bold text-rose-500">Emergency Rescue Login</a>
-            </span>
           </p>
         </div>
       </div>

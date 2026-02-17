@@ -11,6 +11,26 @@ ob_start(); // Prevent any stray output (BOM, whitespace) from breaking JSON
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
+// Authentication check - Mandatory Login Enforcement
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+$current_script = basename($_SERVER['SCRIPT_NAME']);
+$exempt_scripts = ['auth.php', 'health.php', 'debug_login.php', 'test_rescue.php'];
+
+if (!in_array($current_script, $exempt_scripts)) {
+    if (!isset($_SESSION['user_id'])) {
+        http_response_code(401);
+        echo json_encode([
+            "success" => false, 
+            "message" => "Unauthorized access. Session invalid or expired.",
+            "error_code" => "UNAUTHORIZED"
+        ]);
+        exit;
+    }
+}
+
 // 1. CORS Headers
 if (isset($_SERVER['HTTP_ORIGIN'])) {
     header("Access-Control-Allow-Origin: " . $_SERVER['HTTP_ORIGIN']);

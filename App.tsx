@@ -15,7 +15,8 @@ import PaymentTracker from './components/PaymentTracker';
 import { Client, Project, Developer, Notification, User } from './types';
 import {
   fetchProjects, fetchClients, fetchDevelopers, fetchNotifications,
-  createProject, updateProject, deleteProject, fetchPayments
+  createProject, updateProject, deleteProject, fetchPayments,
+  secureFetch, handleResponse
 } from './services/api';
 import { ICONS } from './constants';
 import { formatCurrency, calculateGrandTotal } from './utils';
@@ -39,25 +40,12 @@ const App: React.FC = () => {
   const [apiError, setApiError] = useState<string | null>(null);
   const [settingsUsers, setSettingsUsers] = useState<User[]>([]);
 
-  // Check Auth on mount - TEMPORARILY BYPASSED FOR TESTING
+  // Check Auth on mount - Mandatory Verification
   useEffect(() => {
-    // TEMPORARY: Auto-login as admin for testing
-    const user: User = {
-      id: '999',
-      name: 'Administrator',
-      username: 'admin',
-      email: 'admin@novalink.com',
-      role: 'Admin',
-      createdAt: new Date().toISOString()
-    };
-    setCurrentUser(user);
-    localStorage.setItem('it_auth_user', JSON.stringify(user));
-
-    /*
     const verifyAuth = async () => {
       try {
-        const res = await fetch('/api/auth.php?action=check', { credentials: 'include' });
-        const data = await res.json();
+        const res = await secureFetch('/api/auth.php?action=check');
+        const data = await handleResponse(res);
         if (data.authenticated && data.user) {
           const user: User = {
             id: String(data.user.id),
@@ -83,11 +71,23 @@ const App: React.FC = () => {
             localStorage.removeItem('it_auth_user');
           }
         }
+      } finally {
+        setLoading(false);
       }
     };
     verifyAuth();
-    */
+
+    // Global listener for unauthorized API calls (Session Expiry)
+    const handleUnauthorized = () => {
+      setCurrentUser(null);
+      localStorage.removeItem('it_auth_user');
+      toast.error('Session expired. Please login again.');
+    };
+
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
   }, []);
+
 
 
   // Load data only when user is authenticated
@@ -166,8 +166,8 @@ const App: React.FC = () => {
     setSettingsUsersLoading(true);
     setSettingsUsersAdminOnly(false);
     try {
-      const res = await fetch('/api/users.php', { credentials: 'include' });
-      const data = await res.json().catch(() => ({}));
+      const res = await secureFetch('/api/users.php');
+      const data = await handleResponse(res);
       if (res.status === 403) {
         setSettingsUsersAdminOnly(true);
         setSettingsUsers([{ ...currentUser }]);
@@ -198,13 +198,12 @@ const App: React.FC = () => {
 
   const handleAddUser = async (user: Omit<User, 'id' | 'createdAt'>) => {
     try {
-      const res = await fetch('/api/auth.php?action=register', {
+      const res = await secureFetch('/api/auth.php?action=register', {
         method: 'POST',
-        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: user.username, name: user.name, email: user.email, password: user.password, role: user.role })
       });
-      const data = await res.json();
+      const data = await handleResponse(res);
       if (data.success) {
         await fetchSettingsUsers();
       } else {
@@ -217,13 +216,12 @@ const App: React.FC = () => {
 
   const handleDeleteUser = async (id: string) => {
     try {
-      const res = await fetch('/api/users.php', {
+      const res = await secureFetch('/api/users.php', {
         method: 'DELETE',
-        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: Number(id) })
       });
-      const data = await res.json();
+      const data = await handleResponse(res);
       if (data.success) await fetchSettingsUsers();
       else alert(data.message || 'Failed to remove user');
     } catch {
@@ -236,13 +234,12 @@ const App: React.FC = () => {
       const body: any = { id: Number(id), ...updates };
       if (!updates.password) delete body.password;
 
-      const res = await fetch('/api/update_user.php', {
+      const res = await secureFetch('/api/update_user.php', {
         method: 'POST',
-        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
-      const data = await res.json();
+      const data = await handleResponse(res);
       if (data.success) {
         await fetchSettingsUsers();
         return true;
@@ -350,9 +347,15 @@ const App: React.FC = () => {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth.php?action=logout', { credentials: 'include' });
+    } catch (e) {
+      console.error("Backend logout failed", e);
+    }
     setCurrentUser(null);
     localStorage.removeItem('it_auth_user');
+    toast.success('Logged out successfully');
   };
 
   const pendingCount = projects.filter(p => p.status === 'Pending').length;
@@ -482,8 +485,8 @@ const App: React.FC = () => {
               onClose={() => setSelectedProjectForDetail(null)}
               onRefresh={async () => {
                 if (selectedProjectForDetail.id) {
-                  const res = await fetch(`/api/projects.php?id=${selectedProjectForDetail.id}`);
-                  const detail = await res.json();
+                  const res = await secureFetch(`/api/projects.php?id=${selectedProjectForDetail.id}`);
+                  const detail = await handleResponse(res);
                   setSelectedProjectForDetail(detail);
                   await refreshData();
                 }
