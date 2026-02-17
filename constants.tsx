@@ -1,5 +1,5 @@
-
 import React, { useState } from 'react';
+import logo from './assets/logo.png';
 
 export const APP_NAME = "NovaLink";
 
@@ -10,7 +10,7 @@ export const LOGO = ({ className = "h-[43px] w-auto" }: { className?: string }) 
     <div className="flex items-center gap-3">
       {!imageError ? (
         <img
-          src="/logo.png"
+          src={logo}
           alt="NovaLink"
           className={`${className} object-contain`}
           onError={() => setImageError(true)}

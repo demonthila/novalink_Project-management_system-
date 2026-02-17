@@ -5,6 +5,7 @@ import { ICONS } from '../constants';
 import { formatCurrency, calculateGrandTotal, calculatePaidAmount, calculateTotalAdditionalCosts } from '../utils';
 import PaymentTracker from './PaymentTracker';
 import { generateProjectInvoice } from '../services/invoiceService';
+import logo from '../assets/logo.png';
 
 interface ProjectDetailViewProps {
     project: Project;
@@ -26,6 +27,8 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
 
     // Initialize complex invoice state
     const [invoiceData, setInvoiceData] = React.useState<any>(null);
+
+    const [isGenerating, setIsGenerating] = React.useState(false);
 
     // Populate default data when modal opens
     React.useEffect(() => {
@@ -68,10 +71,18 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
         }
     }, [isInvoiceModalOpen, project, client, invoiceData]);
 
-    const handleDownload = () => {
-        setIsInvoiceModalOpen(false);
-        generateProjectInvoice(project, client, invoiceData);
-        setInvoiceData(null); // Reset for next time
+    const handleDownload = async () => {
+        setIsGenerating(true);
+        try {
+            await generateProjectInvoice(project, client, invoiceData);
+            setIsInvoiceModalOpen(false);
+            setInvoiceData(null); // Reset for next time
+        } catch (error) {
+            console.error("Failed to generate invoice:", error);
+            alert("Failed to generate invoice. Please try again.");
+        } finally {
+            setIsGenerating(false);
+        }
     };
 
     const toggleItem = (id: string) => {
@@ -199,9 +210,22 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
 
                             <div className="p-6 sm:px-8 border-t border-slate-50 bg-slate-50/30 flex items-center justify-between gap-4 sticky bottom-0 z-10">
                                 <button onClick={() => setIsInvoiceModalOpen(false)} className="text-slate-400 text-[10px] font-black uppercase tracking-widest hover:text-rose-600 transition-all px-4 py-2">Discard</button>
-                                <button onClick={handleDownload} className="flex-1 max-w-[240px] px-6 py-3.5 bg-[#2563EB] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-2">
-                                    <ICONS.Download />
-                                    <span>Download PDF</span>
+                                <button
+                                    onClick={handleDownload}
+                                    disabled={isGenerating}
+                                    className={`flex-1 max-w-[240px] px-6 py-3.5 ${isGenerating ? 'bg-blue-400 cursor-not-allowed' : 'bg-[#2563EB] hover:bg-blue-700 shadow-lg shadow-blue-500/20 active:scale-95'} text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2`}
+                                >
+                                    {isGenerating ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                            <span>Generating...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <ICONS.Download />
+                                            <span>Download PDF</span>
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         </div>
@@ -213,7 +237,7 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
                 <div className="px-8 sm:px-12 py-8 sm:py-10 border-b border-slate-50 flex items-center justify-between sticky top-0 bg-white/80 backdrop-blur-md z-20">
                     <div className="flex items-center gap-6">
                         <div className="w-16 h-16 rounded-[24px] bg-blue-600 text-white flex items-center justify-center text-2xl font-black shadow-xl shadow-blue-500/20 overflow-hidden">
-                            <img src="/logo.png" className="w-full h-full object-cover p-2 bg-white" alt="N" onError={(e: any) => e.target.src = ''} />
+                            <img src={logo} className="w-full h-full object-cover p-2 bg-white" alt="N" onError={(e: any) => e.target.src = ''} />
                         </div>
                         <div>
                             <div className="flex items-center gap-3">

@@ -3,10 +3,28 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Project, Client } from '../types';
 import { formatCurrency } from '../utils';
+import logoUrl from '../assets/logo.png';
 
-export const generateProjectInvoice = (project: Project, client: Client | undefined, metadata: any) => {
+const loadImage = async (url: string): Promise<string> => {
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Network response was not ok');
+        const blob = await response.blob();
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    } catch (e) {
+        console.error("Error loading image:", e);
+        throw e;
+    }
+};
+
+export const generateProjectInvoice = async (project: Project, client: Client | undefined, metadata: any) => {
     const doc = new jsPDF();
-    const currency = project.currency || 'AUD';
+    const currency = project.currency || 'USD';
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 14;
 
@@ -25,8 +43,11 @@ export const generateProjectInvoice = (project: Project, client: Client | undefi
     // --- Header Section ---
     // Logo
     try {
-        doc.addImage('/logo.png', 'PNG', margin, 15, 50, 12);
+        const logoData = await loadImage('/logo.png');
+        doc.addImage(logoData, 'PNG', margin, 15, 50, 12);
     } catch (e) {
+        console.error("Logo load failed:", e);
+        // Fallback logo
         doc.setFillColor(15, 23, 42);
         doc.roundedRect(margin, 15, 10, 10, 2, 2, 'F');
         doc.setFont("helvetica", "bold"); doc.setFontSize(20); doc.setTextColor(15, 23, 42);
