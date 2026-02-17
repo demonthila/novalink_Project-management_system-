@@ -25,11 +25,12 @@ RewriteCond %{REQUEST_URI} !^/dist/
 RewriteRule ^(.*)$ dist/$1 [L]
 
 # 4. SPA Routing -> /dist/index.html
-# If not a file, directory, or API request, serve index.html
+# If not a file, directory, API request, or deploy script, serve index.html
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{REQUEST_URI} !^/api/
 RewriteCond %{REQUEST_URI} !^/php_backend/
+RewriteCond %{REQUEST_URI} !^/deploy\.php$
 RewriteRule ^.*$ dist/index.html [L]
 
 # Security Headers
