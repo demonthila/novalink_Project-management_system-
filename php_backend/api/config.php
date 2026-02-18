@@ -224,6 +224,17 @@ function autoCreateTables($pdo) {
     if (!in_array('start_date', $pColNames)) $pdo->exec("ALTER TABLE projects ADD COLUMN start_date DATE DEFAULT NULL AFTER client_id");
     if (!in_array('end_date', $pColNames)) $pdo->exec("ALTER TABLE projects ADD COLUMN end_date DATE DEFAULT NULL AFTER start_date");
     
+    if (!in_array('total_revenue', $pColNames)) {
+        if (in_array('base_amount', $pColNames)) {
+            $pdo->exec("ALTER TABLE projects CHANGE COLUMN base_amount total_revenue DECIMAL(15,2) DEFAULT 0.00");
+        } else {
+            $pdo->exec("ALTER TABLE projects ADD COLUMN total_revenue DECIMAL(15,2) DEFAULT 0.00");
+        }
+    }
+    if (!in_array('total_profit', $pColNames)) {
+        $pdo->exec("ALTER TABLE projects ADD COLUMN total_profit DECIMAL(15,2) DEFAULT 0.00");
+    }
+    
     // Developers table
     $dCols = $pdo->query("DESCRIBE developers")->fetchAll(PDO::FETCH_COLUMN);
     $devFields = [
@@ -248,6 +259,27 @@ function autoCreateTables($pdo) {
     if (!in_array('company_name', $cCols)) $pdo->exec("ALTER TABLE clients ADD COLUMN company_name VARCHAR(255) DEFAULT NULL AFTER name");
     if (!in_array('phone', $cCols)) $pdo->exec("ALTER TABLE clients ADD COLUMN phone VARCHAR(100) DEFAULT NULL AFTER email");
     if (!in_array('address', $cCols)) $pdo->exec("ALTER TABLE clients ADD COLUMN address TEXT DEFAULT NULL");
+
+    // Additional Costs table migrations
+    $acCols = $pdo->query("DESCRIBE additional_costs")->fetchAll();
+    $costTypeCol = null;
+    $nameCol = null;
+    foreach ($acCols as $col) {
+        if ($col['Field'] === 'cost_type') $costTypeCol = $col;
+        if ($col['Field'] === 'name') $nameCol = $col;
+    }
+
+    if (!$costTypeCol) {
+        if ($nameCol) {
+            $pdo->exec("ALTER TABLE additional_costs CHANGE COLUMN name cost_type VARCHAR(255) DEFAULT 'Third Party Cost'");
+        } else {
+            $pdo->exec("ALTER TABLE additional_costs ADD COLUMN cost_type VARCHAR(255) DEFAULT 'Third Party Cost' AFTER project_id");
+        }
+    } elseif (strpos($costTypeCol['Type'], 'enum') !== false) {
+        // Force convert ENUM to VARCHAR to support 'Custom' and other values
+        $pdo->exec("ALTER TABLE additional_costs MODIFY COLUMN cost_type VARCHAR(255) DEFAULT 'Third Party Cost'");
+    }
+
     
     // Ensure project_developers has payment flags
     $pdCols = $pdo->query("DESCRIBE project_developers")->fetchAll(PDO::FETCH_COLUMN);

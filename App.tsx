@@ -276,9 +276,9 @@ const App: React.FC = () => {
           toast.error("Creation Failed: " + (res.message || res.error || "Unknown error"));
         }
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      toast.error("An error occurred while saving the project");
+      toast.error(e.message || "An error occurred while saving the project");
     }
   };
 

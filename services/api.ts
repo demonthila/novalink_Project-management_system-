@@ -171,3 +171,12 @@ export async function updateSettings(data: any) {
     return handleResponse(res);
 }
 
+export async function createAdditionalCost(data: { project_id: number, cost_type: string, description: string, amount: number }) {
+    const res = await secureFetch(`${API_BASE}/finance.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    return handleResponse(res);
+}
+

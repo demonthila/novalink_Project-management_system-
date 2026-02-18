@@ -15,6 +15,9 @@ interface ProjectDetailViewProps {
     onRefresh: () => void;
 }
 
+import { createAdditionalCost } from '../services/api';
+import { toast } from 'react-hot-toast';
+
 const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
     project,
     clients,
@@ -29,6 +32,11 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
     const [invoiceData, setInvoiceData] = React.useState<any>(null);
 
     const [isGenerating, setIsGenerating] = React.useState(false);
+
+    // Add Expense State
+    const [isAddingExpense, setIsAddingExpense] = React.useState(false);
+    const [newExpense, setNewExpense] = React.useState({ cost_type: 'Third Party Cost', description: '', amount: '' });
+    const [isSubmittingExpense, setIsSubmittingExpense] = React.useState(false);
 
     // Populate default data when modal opens
     React.useEffect(() => {
@@ -106,10 +114,40 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
             .reduce((sum: number, i: any) => sum + i.amount, 0);
     };
 
+    const handleAddExpense = async () => {
+        if (!newExpense.description || !newExpense.amount) {
+            toast.error('Please fill description and amount');
+            return;
+        }
+
+        setIsSubmittingExpense(true);
+        try {
+            const res = await createAdditionalCost({
+                project_id: project.id,
+                cost_type: newExpense.cost_type,
+                description: newExpense.description,
+                amount: parseFloat(newExpense.amount) || 0
+            });
+
+            if (res.success) {
+                toast.success('Expense recorded successfully');
+                setNewExpense({ cost_type: 'Third Party Cost', description: '', amount: '' });
+                setIsAddingExpense(false);
+                onRefresh();
+            } else {
+                toast.error(res.error || 'Failed to record expense');
+            }
+        } catch (err: any) {
+            toast.error(err.message || 'Error recording expense');
+        } finally {
+            setIsSubmittingExpense(false);
+        }
+    };
+
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-md" onClick={onClose}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-md" onClick={onClose}>
             <div
-                className="bg-white sm:rounded-[40px] w-full max-w-6xl h-full sm:h-[94vh] sm:max-h-[94vh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in-95 duration-300 border border-slate-200"
+                className="bg-white rounded-[32px] sm:rounded-[40px] w-full max-w-5xl h-auto max-h-[90vh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in-95 duration-300 border border-slate-200"
                 onClick={e => e.stopPropagation()}
             >
                 {/* Invoice Finalization Console */}
@@ -371,13 +409,67 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
                             </section>
 
                             <section className="space-y-6">
-                                <div className="flex items-center gap-4 mb-2">
-                                    <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600">
-                                        <ICONS.Finances />
+                                <div className="flex items-center justify-between gap-4 mb-2 w-full">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600">
+                                            <ICONS.Finances />
+                                        </div>
+                                        <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-900">Categorized Expenses</h3>
                                     </div>
-                                    <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-900">Categorized Expenses</h3>
+                                    <button
+                                        onClick={() => setIsAddingExpense(!isAddingExpense)}
+                                        className="px-4 py-1.5 bg-amber-50 text-amber-600 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-amber-100 transition-all border border-amber-200/50"
+                                    >
+                                        {isAddingExpense ? 'Cancel' : 'Add Expense'}
+                                    </button>
                                 </div>
                                 <div className="bg-white border border-slate-100 rounded-[32px] overflow-hidden shadow-sm">
+                                    {isAddingExpense && (
+                                        <div className="p-6 bg-amber-50/30 border-b border-slate-100 animate-in slide-in-from-top duration-300">
+                                            <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-end">
+                                                <div className="sm:col-span-3 space-y-1.5">
+                                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Type</label>
+                                                    <select
+                                                        className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-[11px] font-bold text-slate-800 outline-none focus:border-blue-500"
+                                                        value={newExpense.cost_type}
+                                                        onChange={e => setNewExpense({ ...newExpense, cost_type: e.target.value })}
+                                                    >
+                                                        <option value="Third Party Cost">Critical Resource</option>
+                                                        <option value="Revision Cost">Service Fee</option>
+                                                        <option value="Custom">Other Expense</option>
+                                                    </select>
+                                                </div>
+                                                <div className="sm:col-span-5 space-y-1.5">
+                                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Description</label>
+                                                    <input
+                                                        className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-[11px] font-bold text-slate-800 outline-none focus:border-blue-500"
+                                                        placeholder="Ex: API Gateway..."
+                                                        value={newExpense.description}
+                                                        onChange={e => setNewExpense({ ...newExpense, description: e.target.value })}
+                                                    />
+                                                </div>
+                                                <div className="sm:col-span-2 space-y-1.5">
+                                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Amount</label>
+                                                    <input
+                                                        type="number"
+                                                        className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-[11px] font-bold text-slate-800 outline-none focus:border-blue-500 transition-all"
+                                                        placeholder="0.00"
+                                                        value={newExpense.amount}
+                                                        onChange={e => setNewExpense({ ...newExpense, amount: e.target.value })}
+                                                    />
+                                                </div>
+                                                <div className="sm:col-span-2">
+                                                    <button
+                                                        onClick={handleAddExpense}
+                                                        disabled={isSubmittingExpense}
+                                                        className="w-full h-10 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all disabled:opacity-50 flex items-center justify-center"
+                                                    >
+                                                        {isSubmittingExpense ? 'Saving...' : 'Record'}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                     <div className="divide-y divide-slate-50">
                                         {(project.additional_costs || []).length > 0 ? (
                                             project.additional_costs?.map((cost: any, idx) => (

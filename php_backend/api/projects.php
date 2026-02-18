@@ -205,10 +205,21 @@ elseif ($method === 'POST') {
 
 elseif ($method === 'PUT') {
     $data = getJsonInput();
-    if (!$id) exit(json_encode(["error" => "ID required"]));
-
     try {
         $pdo->beginTransaction();
+
+        // Fetch current project state
+        $currStmt = $pdo->prepare("SELECT total_revenue, status, start_date, end_date FROM projects WHERE id = ?");
+        $currStmt->execute([$id]);
+        $currentProject = $currStmt->fetch();
+
+        if (!$currentProject) {
+            throw new Exception("Project not found");
+        }
+
+        $oldRevenue = (float)$currentProject['total_revenue'];
+        $oldStart = $currentProject['start_date'];
+        $oldEnd = $currentProject['end_date'];
 
         // If request attempts to mark project as Finished/Completed, validate all payments are received
         if (isset($data['status']) && ($data['status'] === 'Finished' || $data['status'] === 'Completed')) {
@@ -219,26 +230,18 @@ elseif ($method === 'PUT') {
             $paidCount = isset($row['paid']) ? intval($row['paid']) : 0;
             
             // Re-fetch project to check revenue vs paid amount
-            $revStmt = $pdo->prepare("SELECT total_revenue FROM projects WHERE id = ?");
-            $revStmt->execute([$id]);
-            $totalRevenue = $revStmt->fetchColumn();
+            $revenue = isset($data['total_revenue']) ? floatval($data['total_revenue']) : $oldRevenue;
             
             $paidAmtStmt = $pdo->prepare("SELECT SUM(amount) FROM payments WHERE project_id = ? AND status = 'Paid'");
             $paidAmtStmt->execute([$id]);
             $paidAmt = $paidAmtStmt->fetchColumn() ?: 0;
 
-            if ($totalPayments < 3 || $paidCount < $totalPayments || $paidAmt < $totalRevenue) {
+            if ($totalPayments < 3 || $paidCount < $totalPayments || $paidAmt < ($revenue - 0.01)) { // Small epsilon for float comparison
                 $pdo->rollBack();
-                echo json_encode(["success" => false, "message" => "Please collect all remaining payments (minimum 3 milestones and full contractual value) before completing this project."]);
+                echo json_encode(["success" => false, "message" => "Please collect all remaining payments (minimum 3 milestones and full contractual value) before completing this project. Current Paid: $paidAmt, Target: $revenue"]);
                 exit;
             }
         }
-        // Update Project Basics
-        // For simplicity, we expect all fields or use COALESCE in SQL, but simpler to just update what's sent.
-        // However, calculating profit requires knowing all costs.
-        // Simplest strategy: Delete relations and re-insert (for developers/costs) OR update smartly.
-        // Given complexity, let's assume full update of relations is sent, or we fetch current first.
-        // Strategy: Update Project Fields -> Re-calc Profit.
         
         // Update Project Table
         if (isset($data['name'])) {
@@ -268,15 +271,51 @@ elseif ($method === 'PUT') {
                 $notes,
                 $id
             ]);
+
+            // Handling Payment Recap if Revenue or Dates Changed
+            $revenueChanged = abs($revenue - $oldRevenue) > 0.01;
+            $datesChanged = $startDate !== $oldStart || $endDate !== $oldEnd;
+
+            if ($revenueChanged || $datesChanged) {
+                // Check if we have standard 3 milestones and none are paid
+                $pCountStmt = $pdo->prepare("SELECT COUNT(*) FROM payments WHERE project_id = ?");
+                $pCountStmt->execute([$id]);
+                $pCount = (int)$pCountStmt->fetchColumn();
+
+                $paidCountStmt = $pdo->prepare("SELECT COUNT(*) FROM payments WHERE project_id = ? AND status = 'Paid'");
+                $paidCountStmt->execute([$id]);
+                $paidCount = (int)$paidCountStmt->fetchColumn();
+
+                if ($pCount === 3 && $paidCount === 0) {
+                    // Safe to recalculate based on standard 30-30-40 split
+                    $pValues = [$revenue * 0.30, $revenue * 0.30, $revenue * 0.40];
+                    
+                    // Recalculate dates
+                    $start = !empty($startDate) ? new DateTime($startDate) : new DateTime();
+                    $end = !empty($endDate) ? new DateTime($endDate) : (clone $start)->modify('+1 month');
+                    $diff = $start->diff($end);
+                    $totalDays = $diff->days;
+                    $midDays = floor($totalDays / 2);
+                    $mid = (clone $start)->modify("+$midDays days");
+                    $pDates = [$start->format('Y-m-d'), $mid->format('Y-m-d'), $end->format('Y-m-d')];
+
+                    $updPay = $pdo->prepare("UPDATE payments SET amount = ?, due_date = ? WHERE project_id = ? AND payment_number = ?");
+                    for ($i = 0; $i < 3; $i++) {
+                        $updPay->execute([$pValues[$i], $pDates[$i], $id, $i + 1]);
+                    }
+                }
+            }
         }
 
-        // Update Developers (Delete all, re-insert) - classic simple approach
-        if (isset($data['developers'])) {
+        // Update Developers (Delete all, re-insert)
+        if (isset($data['developers']) && is_array($data['developers'])) {
             $pdo->prepare("DELETE FROM project_developers WHERE project_id=?")->execute([$id]);
             $dStmt = $pdo->prepare("INSERT INTO project_developers (project_id, developer_id, cost, is_advance_paid, is_final_paid) VALUES (?, ?, ?, ?, ?)");
             foreach ($data['developers'] as $dev) {
                 $devId = isset($dev['id']) ? intval($dev['id']) : 0;
-                $cost = isset($dev['cost']) ? (float)$dev['cost'] : 0.0;
+                if ($devId <= 0) continue; 
+                
+                $cost = (float)($dev['cost'] ?? 0);
                 $isAdvance = !empty($dev['is_advance_paid']) ? 1 : 0;
                 $isFinal = !empty($dev['is_final_paid']) ? 1 : 0;
                 $dStmt->execute([$id, $devId, $cost, $isAdvance, $isFinal]);
@@ -284,41 +323,44 @@ elseif ($method === 'PUT') {
         }
 
         // Update Additional Costs
-        if (isset($data['additional_costs'])) {
+        if (isset($data['additional_costs']) && is_array($data['additional_costs'])) {
             $pdo->prepare("DELETE FROM additional_costs WHERE project_id=?")->execute([$id]);
             $cStmt = $pdo->prepare("INSERT INTO additional_costs (project_id, cost_type, description, amount) VALUES (?, ?, ?, ?)");
             foreach ($data['additional_costs'] as $cost) {
+                if (empty($cost['description']) && empty($cost['amount'])) continue; 
                 $costType = $cost['cost_type'] ?? 'Third Party Cost';
-                $cStmt->execute([$id, $costType, $cost['description'], $cost['amount']]);
+                $amount = (float)($cost['amount'] ?? 0);
+                $cStmt->execute([$id, $costType, $cost['description'] ?? '', $amount]);
             }
         }
         
         // Recalculate Profit
-        // Fetch fresh totals
         $revStmt = $pdo->prepare("SELECT total_revenue FROM projects WHERE id=?");
         $revStmt->execute([$id]);
-        $revenue = $revStmt->fetchColumn();
+        $finalRevenue = (float)$revStmt->fetchColumn();
 
-        // Calculate developer PAID amounts (advance 40% and final 60%)
+        // Calculate developer PAID amounts
         $devCostStmt = $pdo->prepare("SELECT IFNULL(SUM(
             (CASE WHEN is_advance_paid=1 THEN cost*0.4 ELSE 0 END) +
             (CASE WHEN is_final_paid=1 THEN cost*0.6 ELSE 0 END)
         ),0) as paid_sum FROM project_developers WHERE project_id=?");
         $devCostStmt->execute([$id]);
-        $devCost = $devCostStmt->fetchColumn() ?: 0;
+        $devPaidAmt = (float)$devCostStmt->fetchColumn();
 
         $addCostStmt = $pdo->prepare("SELECT SUM(amount) FROM additional_costs WHERE project_id=?");
         $addCostStmt->execute([$id]);
-        $addCost = $addCostStmt->fetchColumn() ?: 0;
+        $addCostTotal = (float)$addCostStmt->fetchColumn();
 
-        $profit = calculateProfit($revenue, $devCost, $addCost);
+        $profit = calculateProfit($finalRevenue, $devPaidAmt, $addCostTotal);
         $pdo->prepare("UPDATE projects SET total_profit=? WHERE id=?")->execute([$profit, $id]);
 
         $pdo->commit();
-        echo json_encode(["success" => true, "message" => "Project updated"]);
+        echo json_encode(["success" => true, "message" => "Project updated successfully", "profit" => $profit]);
 
-    } catch (Exception $e) {
-        $pdo->rollBack();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         http_response_code(500);
         echo json_encode(["success" => false, "message" => $e->getMessage()]);
     }

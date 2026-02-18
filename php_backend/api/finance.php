@@ -35,26 +35,68 @@ if ($method === 'GET') {
 // POST Request - Add New Cost
 elseif ($method === 'POST') {
     $data = getJsonInput();
+    
+    // Normalize Project ID
+    $pId = $data['projectId'] ?? $data['project_id'] ?? null;
+    $amount = isset($data['amount']) ? (float)$data['amount'] : 0;
 
     // Validate Input
-    if (empty($data['amount']) || empty($data['projectId'])) {
+    if (!$pId || $amount <= 0) {
         http_response_code(400);
-        exit(json_encode(["error" => "Amount and Project ID required"]));
+        exit(json_encode(["error" => "Valid Amount and Project ID required"]));
+    }
+
+    // Verify Project Exists
+    $check = $pdo->prepare("SELECT id FROM projects WHERE id = ?");
+    $check->execute([$pId]);
+    if (!$check->fetch()) {
+        http_response_code(404);
+        exit(json_encode(["error" => "Project not found"]));
     }
 
     $sql = "INSERT INTO additional_costs (project_id, cost_type, description, amount) VALUES (?, ?, ?, ?)";
     $stmt = $pdo->prepare($sql);
     $stmt->execute([
-        $data['projectId'],
+        $pId,
         $data['cost_type'] ?? 'Third Party Cost',
         $data['description'] ?? '',
-        $data['amount']
+        $amount
     ]);
+
+    $newId = (int)$pdo->lastInsertId();
+
+    // Recalculate Project Profit
+    try {
+        // Fetch fresh totals for calculation
+        $revStmt = $pdo->prepare("SELECT total_revenue FROM projects WHERE id = ?");
+        $revStmt->execute([$pId]);
+        $revenue = (float)$revStmt->fetchColumn();
+
+        // Calculate developer PAID amounts
+        $devCostStmt = $pdo->prepare("SELECT IFNULL(SUM(
+            (CASE WHEN is_advance_paid=1 THEN cost*0.4 ELSE 0 END) +
+            (CASE WHEN is_final_paid=1 THEN cost*0.6 ELSE 0 END)
+        ),0) as paid_sum FROM project_developers WHERE project_id = ?");
+        $devCostStmt->execute([$pId]);
+        $devPaidAmt = (float)$devCostStmt->fetchColumn();
+
+        $addCostStmt = $pdo->prepare("SELECT SUM(amount) FROM additional_costs WHERE project_id = ?");
+        $addCostStmt->execute([$pId]);
+        $addCostTotal = (float)$addCostStmt->fetchColumn();
+
+        $profit = $revenue - ($devPaidAmt + $addCostTotal);
+
+        $pUpdate = $pdo->prepare("UPDATE projects SET total_profit = ? WHERE id = ?");
+        $pUpdate->execute([$profit, $pId]);
+    } catch (Exception $e) {
+        // Log but don't fail the primary insertion response
+    }
 
     echo json_encode([
         "success" => true,
-        "id" => $pdo->lastInsertId(),
-        "message" => "Cost recorded"
+        "id" => $newId,
+        "message" => "Cost recorded successfully",
+        "new_profit" => $profit ?? null
     ]);
 }
 

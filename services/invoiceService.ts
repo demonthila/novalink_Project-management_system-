@@ -42,17 +42,49 @@ export const generateProjectInvoice = async (project: Project, client: Client | 
 
     // --- Header Section ---
     // Logo
-    try {
-        const logoData = await loadImage('/logo.png');
-        doc.addImage(logoData, 'PNG', margin, 15, 50, 12);
-    } catch (e) {
-        console.error("Logo load failed:", e);
-        // Fallback logo
-        doc.setFillColor(15, 23, 42);
-        doc.roundedRect(margin, 15, 10, 10, 2, 2, 'F');
-        doc.setFont("helvetica", "bold"); doc.setFontSize(20); doc.setTextColor(15, 23, 42);
-        doc.text("Novalink", margin + 14, 23);
+    // Use the absolute path to logo.png for production compatibility (Hostinger)
+    const logoPath = window.location.origin + '/logo.png';
+    const img = new Image();
+    img.src = logoPath;
+
+    await new Promise((resolve, reject) => {
+        img.onload = () => {
+            if (img.naturalWidth === 0) {
+                // Might be a failed load that didn't trigger onerror but result in 0 size
+                img.src = logoUrl;
+            } else {
+                resolve(null);
+            }
+        };
+        img.onerror = () => {
+            // Fallback to the imported logoUrl if the absolute root path fails
+            img.src = logoUrl;
+            img.onload = () => resolve(null);
+            img.onerror = reject;
+        };
+    });
+
+    // Maintain aspect ratio: Use a bounding box to prevent stretching
+    const maxWidth = 60;
+    const maxHeight = 25;
+    const imgOrigWidth = img.naturalWidth || 221; // Fallback to known width
+    const imgOrigHeight = img.naturalHeight || 48;
+
+    let imgWidth = imgOrigWidth;
+    let imgHeight = imgOrigHeight;
+
+    // Scale down to fit bounding box
+    if (imgWidth > maxWidth) {
+        imgHeight = (maxWidth * imgHeight) / imgWidth;
+        imgWidth = maxWidth;
     }
+    if (imgHeight > maxHeight) {
+        imgWidth = (maxHeight * imgWidth) / imgHeight;
+        imgHeight = maxHeight;
+    }
+
+    doc.addImage(img, 'PNG', margin, 12, imgWidth, imgHeight);
+
 
     // Centered Title
     doc.setFont("helvetica", "bold"); doc.setFontSize(22); doc.setTextColor(15, 23, 42);
