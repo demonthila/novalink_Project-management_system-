@@ -138,7 +138,7 @@ const DeveloperList: React.FC<DeveloperListProps> = ({ developers, onAdd, onUpda
                   </span>
                 </td>
                 <td className="px-8 py-6">
-                  <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider border ${d.status === 'Active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                  <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider border ${d.status === 'Active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
                     {d.status}
                   </span>
                 </td>
@@ -187,7 +187,8 @@ const DeveloperModal = ({ isOpen, onClose, onSubmit, initialData }: any) => {
     company_email: '',
     slack: '',
     skills: '',
-    comments: ''
+    comments: '',
+    status: 'Active'
   });
 
   return (
@@ -236,6 +237,20 @@ const DeveloperModal = ({ isOpen, onClose, onSubmit, initialData }: any) => {
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">role</label>
                 <input placeholder="Ex: @harrison_dev" className={MODAL_INPUT} name="slack" value={formData.slack} onChange={e => setFormData({ ...formData, slack: e.target.value })} />
               </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Status</label>
+                <select
+                  className={MODAL_INPUT}
+                  value={formData.status}
+                  onChange={e => setFormData({ ...formData, status: e.target.value })}
+                >
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-8">
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Technical Stack (CSV)</label>
                 <input placeholder="Ex: React, Node.js, AWS" className={MODAL_INPUT} name="skills" value={formData.skills} onChange={e => setFormData({ ...formData, skills: e.target.value })} />
